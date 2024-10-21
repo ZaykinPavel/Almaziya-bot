@@ -2,13 +2,25 @@ const { Pool } = require('pg');
 const { InlineKeyboard } = require('grammy');
 
 // Создаем клиента с параметрами подключения
+// const pool = new Pool({
+//     user: 'postgres',
+//     host: 'localhost', // или адрес вашего сервера
+//     database: 'Almaziya',
+//     password: 'Za9263yK!',
+//     port: 5432, // стандартный порт PostgreSQL
+// });
 const pool = new Pool({
     user: 'postgres',
-    host: 'localhost', // или адрес вашего сервера
-    database: 'Almaziya',
-    password: 'Za9263yK!',
+    host: '212.41.9.83', // или адрес вашего сервера
+    database: 'Almaziya-bot',
+    password: 'PG_GoldTechTeam16122022!',
     port: 5432, // стандартный порт PostgreSQL
 });
+// функция проверяет есть ли в сообщении любое слово из заданного массива
+const findWords = (arr, message) => {
+    const containsWord = arr.some((word) => message.includes(word));
+    return containsWord;
+};
 
 // функция строит инлайн-клавиатуру на основании массива
 const makeInlineKeyboardFromArr = (arr, fieldName) => {
@@ -34,6 +46,18 @@ const makeInlineKeyboardFromArr = (arr, fieldName) => {
     };
 };
 
+// функция проверяет сообщение на точное совпадение с любым выражением из массива
+const findExpression = (arr, message) => {
+    let isContain = false;
+    arr.forEach((word) => {
+        if (message == word) {
+            isContain = true;
+            return;
+        }
+    });
+    return isContain;
+};
+
 // функция делает первичную идентификацию клиента по базе на основании его ID
 const clientVerification = async (ctx) => {
     const clientIdToString = ctx.from.id.toString();
@@ -41,11 +65,33 @@ const clientVerification = async (ctx) => {
     let client;
     try {
         client = await pool.connect();
-        console.log('Подключение успешно');
+        console.log('Подключение для первичной идентификации клиента прошло успешно');
         const records = await client.query(findClientByTgIdQuery, [`${clientIdToString}`]);
         return records.rows[0]; // Возвращаем записи
     } catch (err) {
-        console.error('Ошибка подключения', err);
+        console.error('Ошибка подключения при первичной идентификации клиента', err);
+        return null; // Возвращаем null в случае ошибки
+    } finally {
+        // Освобождаем соединение обратно в пул
+        if (client) {
+            client.release();
+            console.log('Соединение закрыто');
+        }
+    }
+};
+
+// отменяет согласие на подписку у клиента
+const checkAbortAggreToGetMessages = async (clientTgId) => {
+    const updateClientByTgIdQuery =
+        'UPDATE clients SET agree_to_get_messages = FALSE WHERE client_tg_id=$1'; // Запрос должен быть в кавычках
+    let client;
+    try {
+        client = await pool.connect();
+        console.log('Подключение для первичной идентификации клиента прошло успешно');
+        const records = await client.query(updateClientByTgIdQuery, [`${clientTgId}`]);
+        return records.rows[0]; // Возвращаем записи
+    } catch (err) {
+        console.error('Ошибка подключения при первичной идентификации клиента', err);
         return null; // Возвращаем null в случае ошибки
     } finally {
         // Освобождаем соединение обратно в пул
@@ -87,14 +133,13 @@ const findCity = async (strToFind) => {
         `%${shortWordInStr}%`,
         `%${shortWordInStr}`,
     ];
-    console.log('Search Terms:', searchTerms);
     let client;
     try {
         client = await pool.connect();
         const records = await client.query(findCities, searchTerms);
         return records.rows; // Возвращаем записи
     } catch (error) {
-        console.error('Ошибка выполнения запроса', error);
+        console.error('Ошибка выполнения запроса на поиск доступных городов', error);
     } finally {
         // Освобождаем соединение обратно в пул
         if (client) {
@@ -109,14 +154,13 @@ const addClientToDB = async (ctx) => {
     const clientIdToString = ctx.from.id.toString();
     const clientName = ctx.session.clientName;
     const clientCity = ctx.session.clientCity;
-    console.log(clientCity);
     const clientAccount = ctx.from.username;
     const addClientQuery =
         'INSERT INTO clients (client_name, client_tg_id, client_account, city_id) VALUES ($1, $2, $3, (SELECT city_id FROM cities WHERE city_name=$4))';
     let client;
     try {
         client = await pool.connect();
-        console.log('Подключение успешно');
+        console.log('Подключение для добавления нового клиента успешно');
         const records = await client.query(addClientQuery, [
             clientName,
             clientIdToString,
@@ -125,7 +169,7 @@ const addClientToDB = async (ctx) => {
         ]);
         console.log('Новый клиент добавлен:', records.rows[0]);
     } catch (err) {
-        console.error('Ошибка подключения или выполнения запроса', err);
+        console.error('Ошибка подключения или выполнения запроса добавления нового клиента', err);
         return null; // Возвращаем null в случае ошибки
     } finally {
         // Освобождаем соединение обратно в пул
@@ -136,18 +180,21 @@ const addClientToDB = async (ctx) => {
     }
 };
 
-// функция добавляет ровый город в БД
+// функция добавляет новый город в БД
 const addNewCityToDB = async (ctx) => {
     const newCity = ctx.session.clientCity;
     const addCityQuery = 'INSERT INTO cities (city_name) VALUES ($1)';
     let client;
     try {
         client = await pool.connect();
-        console.log('Подключение успешно');
+        console.log('Подключение к БД для добавления нового города прошло успешно');
         const records = await client.query(addCityQuery, [newCity]);
         console.log('Новый город добавлен:', records.rows[0]);
     } catch (err) {
-        console.error('Ошибка подключения или выполнения запроса', err);
+        console.error(
+            'Ошибка подключения или выполнения запроса при добавлении нового города',
+            err
+        );
         return null; // Возвращаем null в случае ошибки
     } finally {
         // Освобождаем соединение обратно в пул
@@ -165,4 +212,7 @@ module.exports = {
     addClientToDB,
     addNewCityToDB,
     makeInlineKeyboardFromArr,
+    findWords,
+    findExpression,
+    checkAbortAggreToGetMessages,
 };
