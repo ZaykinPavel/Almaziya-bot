@@ -67,7 +67,7 @@ bot.command('start', async (ctx) => {
         });
     } else {
         await ctx.reply(
-            '👋 Добрый день! Рады, что вы заглянули в наш магазин ювелирной бижутерии By A&K',
+            'Привет, красотка! Рады, что ты заглянула в магазин модной бижутерии By A&K.',
             {
                 parse_mode: 'HTML',
             }
@@ -75,11 +75,12 @@ bot.command('start', async (ctx) => {
         await ctx.conversation.enter('clientIdentify');
     }
 });
-// Обработчик нажатия на кнопку "Забрать подарок"
+
 bot.on('callback_query:data', async (ctx) => {
     ctx.session.clientInfo = await clientVerification(ctx);
 
     let timeoutId;
+    // Обработчик нажатия на кнопку "Забрать подарок"
     if (ctx.callbackQuery.data === 'getGift') {
         try {
             await ctx.reply('Секундочку...', {
@@ -87,26 +88,35 @@ bot.on('callback_query:data', async (ctx) => {
             });
             await ctx.replyWithVideo(video1);
 
-            await ctx.reply('Надеемся, что данный материал Вам понравится!', {
-                reply_markup: mainKeyboard,
-                parse_mode: 'HTML',
-            });
-
             if (timeoutId) {
                 clearTimeout(timeoutId);
             }
 
-            if (ctx.session.clientInfo) {
-                timeoutId = setTimeout(async () => {
-                    await ctx.reply(
-                        `${ctx.session.clientInfo.client_name}, был ли подарок полезен для тебя?`,
-                        {
-                            reply_markup: isGiftUsefulKeyboard,
-                            parse_mode: 'HTML',
-                        }
+            timeoutId = setTimeout(() => {
+                ctx.reply('Обязательно попробуй этот макияж сделать сама. У тебя получится!', {
+                    reply_markup: mainKeyboard,
+                    parse_mode: 'HTML',
+                });
+
+                timeoutId = setTimeout(() => {
+                    ctx.reply(
+                        `Лови ссылку на инсту <a href="https://www.instagram.com/samarinavisage?igsh=MTQ0YWdyZjA2NWd4aQ==">Самариной Лилии</a>. Загляни, у нее море классного контента.`,
+                        { reply_markup: mainKeyboard, parse_mode: 'HTML' }
                     );
-                }, 200000);
-            }
+
+                    if (ctx.session.clientInfo) {
+                        timeoutId = setTimeout(() => {
+                            ctx.reply(
+                                `${ctx.session.clientInfo.client_name}, тебе понравился подарок?`,
+                                {
+                                    reply_markup: isGiftUsefulKeyboard,
+                                    parse_mode: 'HTML',
+                                }
+                            );
+                        }, 30000);
+                    }
+                }, 5000);
+            }, 60000);
         } catch (error) {
             console.error('Ошибка при отправке видео:', error.message);
             await ctx.answerCallbackQuery({
@@ -305,7 +315,7 @@ bot.start();
 // --------------------------
 // функция запрашивает имя пользователя при первичной аутентификации
 async function askForName(conversation, ctx) {
-    await ctx.reply('Как я могу к вам обращаться? Напишите своё имя...', {
+    await ctx.reply('Как я могу к тебе обращаться? Напиши свое имя...', {
         parse_mode: 'HTML',
     });
     const clientNameObj = await conversation.wait();
@@ -315,7 +325,7 @@ async function askForName(conversation, ctx) {
 
 // функция запрашивает город и при необходимости может возвращать клиента назад к вопросу об имени
 async function askForCity(conversation, ctx) {
-    await ctx.reply('А из какого вы города?', {
+    await ctx.reply('Из какого ты города?', {
         parse_mode: 'HTML',
     });
     const cityObj = await conversation.wait();
@@ -326,14 +336,14 @@ async function askForCity(conversation, ctx) {
         ctx.session.clientCity = foundCity[0].city_name;
         await addClientToDB(ctx);
         await ctx.reply(
-            `${ctx.session.clientName}, спасибо, что вы с нами! Дарим вам подарок от ведущего визажиста города Москвы!`,
+            `${ctx.session.clientName}, спасибо, что ты с нами! Дарим тебе подарок от ТОП-визажиста города Москвы!`,
             {
                 reply_markup: getGiftKeyboard,
                 parse_mode: 'HTML',
             }
         );
     } else if (foundCity.length > 1) {
-        await ctx.reply('Уточните пожалуйста город', {
+        await ctx.reply('Уточни пожалуйста город', {
             parse_mode: 'HTML',
             reply_markup: makeInlineKeyboardFromArr(foundCity, 'city_name'),
         });
@@ -342,13 +352,13 @@ async function askForCity(conversation, ctx) {
             const selectedCity = callbackQuery.update.callback_query.data;
 
             if (selectedCity === 'abort') {
-                await ctx.reply('Давайте вернемся к предыдущему вопросу!');
+                await ctx.reply('Давай вернемся к предыдущему вопросу!');
                 await askForName(conversation, ctx); // Снова спрашиваем имя
             } else {
                 ctx.session.clientCity = selectedCity; // Записываем выбранный город в сессию
                 await addClientToDB(ctx);
                 await ctx.reply(
-                    `${ctx.session.clientName}, спасибо, что вы с нами! Дарим вам подарок от ведущего визажиста города Москвы!`,
+                    `${ctx.session.clientName}, спасибо, что ты с нами! Дарим тебе подарок от ТОП-визажиста города Москвы!`,
                     {
                         reply_markup: getGiftKeyboard,
                         parse_mode: 'HTML',
@@ -362,7 +372,7 @@ async function askForCity(conversation, ctx) {
         await addNewCityToDB(ctx);
         await addClientToDB(ctx);
         await ctx.reply(
-            `${ctx.session.clientName}, спасибо, что вы с нами! Дарим вам подарок от ведущего визажиста города Москвы!`,
+            `${ctx.session.clientName}, спасибо, что ты с нами! Дарим тебе подарок от ТОП-визажиста города Москвы!`,
             {
                 reply_markup: getGiftKeyboard,
                 parse_mode: 'HTML',
