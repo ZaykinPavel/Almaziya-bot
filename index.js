@@ -1,8 +1,21 @@
-require('dotenv').config();
-
+const { botToken } = require('./config/botConfig');
 // получаем доступ к менеджеру системы доступа к файлам и папкам
-const fs = require('fs');
-const createReadStream = require('fs').createReadStream;
+const {
+    idQueryWordsArr,
+    greetengsWordsArr,
+    commonQuestionArr,
+} = require('./controllers/commonPhrases');
+
+const { banWordsArr } = require('./controllers/banWords');
+
+const {
+    getGiftKeyboard,
+    isGiftUsefulKeyboard,
+    isAgreeGetMessagesKeyboard,
+    mainKeyboard,
+} = require('./config/keyboards');
+
+const { video1, video2, video3 } = require('./config/videoConfig');
 
 // импортируем необходимые функции из модуля функций
 const {
@@ -17,89 +30,17 @@ const {
 } = require('./utilites');
 
 // импортируем необходимый нам класс Bot из основной библиотеки grammy.js, а также классы обработчиков ошибок GrammyError и HttpError
-const {
-    Bot,
-    GrammyError,
-    Context,
-    session,
-    HttpError,
-    Keyboard,
-    InlineKeyboard,
-    InputFile,
-} = require('grammy');
-
-// формируем массив бранных слов
-const data = fs.readFileSync('./banwords.txt', { encoding: 'utf8' });
-const banWordsArr = data.trim().split('\n');
-
-const video1 = new InputFile(
-    createReadStream('./video/258091765_Подвеска_цепочки_тройная_вертик.mov')
-);
-const video2 = new InputFile(
-    createReadStream('./video/142304671_Подвеска_любовь_на_арабском_вертик.mov')
-);
-const video3 = new InputFile(createReadStream('./video/Видео--online-audio-convert.com.mp4'));
+const { Bot, GrammyError, Context, session, HttpError } = require('grammy');
 
 // импортируем библиотеки с диалогами
 const { conversations, createConversation } = require('@grammyjs/conversations');
 
-const getGiftKeyboard = new InlineKeyboard().text('🎁 Забрать подарок', 'getGift').row();
-const isGiftUsefulKeyboard = new InlineKeyboard()
-    .text('👍 Да', 'isUseful')
-    .text('🙅‍♂️ Нет', 'isNotUseful');
-const isAgreeGetMessagesKeyboard = new InlineKeyboard()
-    .text('👍 Конечно', 'isAgreeGetMessages')
-    .text('🙅‍♂️ Лучше не надо', 'isNotAgreeGetMessages');
-const mainKeyboard = new Keyboard()
-    .text('Тройная подвеска')
-    .row()
-    .text('Арабская подвеска')
-    .row()
-    .text('Кольцо')
-    .row()
-    .resized()
-    .oneTime();
-const idQueryWordsArr = [
-    'мой id',
-    'id?',
-    'айди?',
-    'у меня id',
-    'у меня id?',
-    'какой у меня id',
-    'какой у меня id?',
-    'какой у меня айди',
-    'какой у меня айди?',
-    'скажи id',
-    'подскажи id',
-    'подскажи мой id',
-    'мой айди',
-    'подскажи айди',
-    'у меня айди',
-    'у меня айди?',
-    'подскажи мой айди',
-];
-const greetengsWordsArr = [
-    'добрый день',
-    'добрый день!',
-    'доброго дня',
-    'доброго дня!',
-    'привет',
-    'здарова',
-    'здравствуйте',
-    'здравствуй',
-];
-const commonQuestionArr = [
-    'как дела',
-    'как дела?',
-    'как поживаешь',
-    'как у тебя дела',
-    'как поживаешь?',
-    'как у тебя дела?',
-];
-const bot = new Bot(process.env.BOT_API_KEY);
+const bot = new Bot(botToken);
+
 // активируем возможность бота поддерживать режим беседы
 bot.use(session({ initial: () => ({}) }));
 bot.use(conversations());
+
 // активируем беседу по сбору информации о клиенте
 bot.use(createConversation(clientIdentify));
 bot.api.setMyCommands([
@@ -144,11 +85,7 @@ bot.on('callback_query:data', async (ctx) => {
             await ctx.reply('Секундочку...', {
                 parse_mode: 'HTML',
             });
-            await ctx.replyWithVideo(
-                new InputFile(
-                    createReadStream('./video/258091765_Подвеска_цепочки_тройная_вертик.mov')
-                )
-            );
+            await ctx.replyWithVideo(video1);
 
             await ctx.reply('Надеемся, что данный материал Вам понравится!', {
                 reply_markup: mainKeyboard,
@@ -254,11 +191,7 @@ bot.on('message', async (ctx) => {
                 }
             );
 
-            await ctx.replyWithVideo(
-                new InputFile(
-                    createReadStream('./video/258091765_Подвеска_цепочки_тройная_вертик.mov')
-                )
-            );
+            await ctx.replyWithVideo(video1);
             await ctx.reply('Отличный выбор! Особенно для вечерних нарядов!', {
                 reply_markup: mainKeyboard,
                 parse_mode: 'HTML',
@@ -285,11 +218,7 @@ bot.on('message', async (ctx) => {
             await ctx.reply('Отличный выбор. Уже передаю вам видео...', {
                 parse_mode: 'HTML',
             });
-            await ctx.replyWithVideo(
-                new InputFile(
-                    createReadStream('./video/142304671_Подвеска_любовь_на_арабском_вертик.mov')
-                )
-            );
+            await ctx.replyWithVideo(video2);
             await ctx.reply('Почувствуй себя арабской принцессой', {
                 reply_markup: mainKeyboard,
                 parse_mode: 'HTML',
@@ -317,9 +246,7 @@ bot.on('message', async (ctx) => {
             await ctx.reply('Кольца - это моя слабость! Секундочку...', {
                 parse_mode: 'HTML',
             });
-            await ctx.replyWithVideo(
-                new InputFile(createReadStream('./video/Видео--online-audio-convert.com.mp4'))
-            );
+            await ctx.replyWithVideo(video3);
             await ctx.reply('Красивое кольцо безусловно подчеркнёт вашу индивидуальность', {
                 reply_markup: mainKeyboard,
                 parse_mode: 'HTML',

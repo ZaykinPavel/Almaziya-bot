@@ -1,21 +1,8 @@
 const { Pool } = require('pg');
-const { InlineKeyboard } = require('grammy');
+const dbConfig = require('./config/dbconfig');
 
-// Создаем клиента с параметрами подключения
-// const pool = new Pool({
-//     user: 'postgres',
-//     host: 'localhost', // или адрес вашего сервера
-//     database: 'Almaziya',
-//     password: 'Za9263yK!',
-//     port: 5432, // стандартный порт PostgreSQL
-// });
-const pool = new Pool({
-    user: 'postgres',
-    host: '212.41.9.83', // или адрес вашего сервера
-    database: 'Almaziya-bot',
-    password: 'PG_GoldTechTeam16122022!',
-    port: 5432, // стандартный порт PostgreSQL
-});
+const pool = new Pool(dbConfig);
+
 // функция проверяет есть ли в сообщении любое слово из заданного массива
 const findWords = (arr, message) => {
     const containsWord = arr.some((word) => message.includes(word));
