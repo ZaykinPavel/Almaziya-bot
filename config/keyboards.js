@@ -17,9 +17,19 @@ const mainKeyboard = new Keyboard()
     .resized()
     .oneTime();
 
+const adminKeyboard = new InlineKeyboard()
+    .text('Рассылка', 'massMailing')
+    .row()
+    .text('Статистика', 'getStatistic')
+    .row();
+
+const returnKeyboard = new InlineKeyboard().text('Вернуться', 'adminKeyboard');
+
 module.exports = {
     getGiftKeyboard,
     isGiftUsefulKeyboard,
     isAgreeGetMessagesKeyboard,
     mainKeyboard,
+    adminKeyboard,
+    returnKeyboard,
 };

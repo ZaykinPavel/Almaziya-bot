@@ -136,6 +136,38 @@ const findCity = async (strToFind) => {
     }
 };
 
+const getStatistic = async () => {
+    const totalClientsQuery = 'SELECT COUNT(client_id) AS number_of_clients FROM clients;'; // Запрос должен быть в кавычках
+    const clientsByCitiesQuery =
+        'SELECT city_name as city, COUNT(city_name) clients_by_city FROM cities INNER JOIN clients USING(city_id) GROUP BY city_name ORDER BY city_name;';
+    const agreeQuery = `SELECT 'agree' AS agree_status, COUNT(agree_to_get_messages) AS total FROM clients WHERE agree_to_get_messages=TRUE UNION ALL SELECT 'disagree' AS agree_status, COUNT(agree_to_get_messages) AS total FROM clients WHERE agree_to_get_messages=FALSE;`;
+    const clientCreatedQuery = `SELECT TO_CHAR(created_at, 'YYYY-MM') AS year_month, COUNT(*) AS total FROM clients GROUP BY year_month ORDER BY year_month;`;
+    let client;
+    try {
+        client = await pool.connect();
+        console.log('Подключение для сбора статистики о клиентах прошло успешно');
+        const recordsOfTotalClients = await client.query(totalClientsQuery);
+        const recordsOfClientsByCities = await client.query(clientsByCitiesQuery);
+        const recordsOfAgreeClients = await client.query(agreeQuery);
+        const recordsPeriodCreatedClients = await client.query(clientCreatedQuery);
+        return {
+            totalClients: recordsOfTotalClients.rows[0],
+            clientsByCities: recordsOfClientsByCities.rows,
+            agreeClients: recordsOfAgreeClients.rows,
+            createdPeriod: recordsPeriodCreatedClients.rows,
+        }; // Возвращаем записи
+    } catch (err) {
+        console.error('Ошибка подключения при сборе статистики о клиентах', err);
+        return null; // Возвращаем null в случае ошибки
+    } finally {
+        // Освобождаем соединение обратно в пул
+        if (client) {
+            client.release();
+            console.log('Соединение закрыто');
+        }
+    }
+};
+
 // функция добавляет клиента в базу
 const addClientToDB = async (ctx) => {
     const clientIdToString = ctx.from.id.toString();
@@ -192,6 +224,60 @@ const addNewCityToDB = async (ctx) => {
     }
 };
 
+const setTotalClientsInMessage = (stat) => {
+    return `${stat.totalClients.number_of_clients}`;
+};
+
+const setTotalAgreeClientsInMessage = (stat) => {
+    return `<b>Согласие на рассылку:</b>\nСогласны: ${stat.agreeClients[0].total}\nНе согласны: ${stat.agreeClients[1].total}`;
+};
+
+const setPeriodRegistretionInMessage = (stat) => {
+    return `<b>По дате регистрации в боте:</b>\nВ текущем месяце: ${getCurrentMonthData(
+        stat.createdPeriod
+    )}\nВ прошлом месяце: ${getPreviousMonthData(stat.createdPeriod)}`;
+};
+
+function getCurrentMonthData(data) {
+    // Получаем текущую дату
+    const now = new Date();
+    // Форматируем текущий месяц и год в 'YYYY-MM'
+    const currentYearMonth = now.toISOString().slice(0, 7); // 'YYYY-MM'
+    const filteredData = data.filter((item) => item.year_month === currentYearMonth);
+    if (filteredData.length > 0) {
+        return filteredData[0].total;
+    } else {
+        return '0';
+    }
+}
+
+function getPreviousMonthData(data) {
+    // Получаем текущую дату
+    const now = new Date();
+    // Уменьшаем месяц на 1 для получения прошлого месяца
+    now.setMonth(now.getMonth() - 1);
+    // Форматируем прошлый месяц и год в 'YYYY-MM'
+    const previousYearMonth = now.toISOString().slice(0, 7); // 'YYYY-MM'
+
+    // Фильтруем данные по прошлому месяцу
+    const filteredData = data.filter((item) => item.year_month === previousYearMonth);
+
+    // Возвращаем total или '0', если данные отсутствуют
+    if (filteredData.length > 0) {
+        return filteredData[0].total;
+    } else {
+        return '0';
+    }
+}
+
+const setStatisticByClientsCityInMessage = (stat) => {
+    let str = '<b>Распределение по городам:</b>\n';
+    for (let i = 0; i < stat.clientsByCities.length; ++i) {
+        str = `${str}${stat.clientsByCities[i].city}: ${stat.clientsByCities[i].clients_by_city} чел.\n`;
+    }
+    return str;
+};
+
 // Экспортируем функцию
 module.exports = {
     clientVerification,
@@ -202,4 +288,9 @@ module.exports = {
     findWords,
     findExpression,
     checkAbortAggreToGetMessages,
+    getStatistic,
+    setTotalClientsInMessage,
+    setStatisticByClientsCityInMessage,
+    setPeriodRegistretionInMessage,
+    setTotalAgreeClientsInMessage,
 };
