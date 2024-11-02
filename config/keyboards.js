@@ -8,7 +8,7 @@ const isAgreeGetMessagesKeyboard = new InlineKeyboard()
     .text('👍 Конечно', 'isAgreeGetMessages')
     .text('🙅‍♂️ Лучше не надо', 'isNotAgreeGetMessages');
 const mainKeyboard = new Keyboard()
-    .text('Тройная подвеска')
+    .text('Урок 1. Скульптор')
     .row()
     .text('Арабская подвеска')
     .row()
@@ -18,12 +18,20 @@ const mainKeyboard = new Keyboard()
     .oneTime();
 
 const adminKeyboard = new InlineKeyboard()
-    .text('Рассылка', 'massMailing')
+    .text('Рассылка всем', 'massMailing')
     .row()
     .text('Статистика', 'getStatistic')
     .row();
 
 const returnKeyboard = new InlineKeyboard().text('Вернуться', 'adminKeyboard');
+
+const confirmMassMailingKeyboard = new InlineKeyboard()
+    .text('Подтвердить', 'confirmMassMailing')
+    .row()
+    .text('Вернуться', 'adminKeyboard')
+    .row();
+
+const stopMassMailingKeyboard = new InlineKeyboard().text('Остановить рассылку', 'stopMassMailing');
 
 module.exports = {
     getGiftKeyboard,
@@ -32,4 +40,6 @@ module.exports = {
     mainKeyboard,
     adminKeyboard,
     returnKeyboard,
+    confirmMassMailingKeyboard,
+    stopMassMailingKeyboard,
 };
