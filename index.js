@@ -197,7 +197,6 @@ async function handleCallbackQuery(ctx) {
                     await ctx.api.deleteMessage(ctx.chat.id, ctx.session.massMailingMessageId);
                     ctx.session.massMailingMessageId = null; // Сбрасываем ID после удаления
                 }
-                await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
                 await ctx.reply('Возвращаемся в главное меню...', {
                     parse_mode: 'HTML',
                     reply_markup: adminKeyboard,
@@ -265,7 +264,7 @@ async function startMassmailing(ctx) {
                 reply_markup: adminKeyboard,
                 parse_mode: 'HTML',
             });
-            return; // Выходим из функции, если рассылка остановлена
+            break; // Выходим из функции, если рассылка остановлена
         }
 
         const { clienttgid, clientname } = client;
