@@ -5,6 +5,9 @@ const {
 } = require('./config/keyboards');
 const { giftVideo } = require('./config/videoConfig');
 
+const { addClientToDB, addNewCityToDB, findCity } = require('./controllers/operationsWithDB'); // импорт необходимых функций из модуля БД
+const { getGiftKeyboard } = require('./config/keyboards'); // импорт необходимых клавиатур
+
 // функция проверяет есть ли в сообщении любое слово из заданного массива
 const findWords = (arr, message) => {
     const containsWord = arr.some((word) => message.includes(word));
@@ -111,10 +114,13 @@ async function sendGift(ctx) {
     await ctx.reply('Секундочку...', { parse_mode: 'HTML' });
     await ctx.replyWithVideo(giftVideo);
     const motivatingMessageTimeout = setTimeout(async () => {
-        await ctx.reply('Обязательно попробуй этот макияж сделать сама. У тебя получится!', {
-            reply_markup: mainKeyboard,
-            parse_mode: 'HTML',
-        });
+        await ctx.reply(
+            'Мы подготовили для тебя серию классных видео-уроков. Пробуй и преображайся 👸',
+            {
+                reply_markup: mainKeyboard,
+                parse_mode: 'HTML',
+            }
+        );
         const sentInstagramTimeout = setTimeout(async () => {
             await ctx.reply(
                 `Лови ссылку на инсту <a href="https://www.instagram.com/samarinavisage?igsh=MTQ0YWdyZjA2NWd4aQ==">Самариной Лилии</a>. Загляни, у нее море классного контента.`,
@@ -127,12 +133,12 @@ async function sendGift(ctx) {
                         parse_mode: 'HTML',
                     });
                     clearTimeout(isGiftUsefulTimeout);
-                }, 20000);
+                }, 40000);
             }
             clearTimeout(sentInstagramTimeout);
         }, 5000);
         clearTimeout(motivatingMessageTimeout);
-    }, 40000);
+    }, 30000);
 }
 
 async function requestFeedback(ctx) {
@@ -151,11 +157,116 @@ async function requestFeedback(ctx) {
     }, 20000);
 }
 
-async function sendContentToClient(ctx, video, emoji, introMessage, outroMessage) {
+async function sendContentToClient(ctx, video, emoji, introMessage, outroMessage, promoMessage) {
     await ctx.react(emoji);
     await ctx.reply(introMessage, { parse_mode: 'HTML' });
     await ctx.replyWithVideo(video);
-    await ctx.reply(outroMessage, { reply_markup: mainKeyboard, parse_mode: 'HTML' });
+    await ctx.reply(outroMessage, { parse_mode: 'HTML' });
+    const promoTimeout = setTimeout(async () => {
+        await ctx.reply(promoMessage, { reply_markup: mainKeyboard, parse_mode: 'HTML' });
+        clearTimeout(promoTimeout);
+    }, 5000);
+}
+
+// Функция для запроса имени
+async function askForName(conversation, ctx) {
+    while (true) {
+        await ctx.reply('Как я могу к тебе обращаться? Напиши свое имя...', {
+            parse_mode: 'HTML',
+        });
+
+        const clientNameObj = await conversation.wait();
+        const clientTextName = clientNameObj.update.message.text;
+
+        if (clientTextName === '/start') {
+            await ctx.reply('Пожалуйста, введи корректное имя еще раз...', {
+                parse_mode: 'HTML',
+            });
+        } else {
+            ctx.session.clientName = clientTextName;
+            await askForCity(conversation, ctx);
+            break; // выходим из цикла, если имя корректное
+        }
+    }
+}
+
+// Функция для запроса города
+async function askForCity(conversation, ctx) {
+    try {
+        await ctx.reply('Из какого ты города?', { parse_mode: 'HTML' });
+
+        const cityObj = await conversation.wait();
+        const cityName = cityObj.update.message.text.trim();
+
+        const foundCity = await findCity(cityName);
+        console.log('Осуществлен поиск по городам: ', foundCity);
+
+        if (!foundCity) {
+            await ctx.reply('Произошла ошибка при поиске города. Попробуй еще раз.');
+            return await askForCity(conversation, ctx); // Повторный запрос города
+        }
+
+        if (foundCity.length === 1) {
+            ctx.session.clientCity = foundCity[0].city_name;
+            try {
+                await addClientToDB(ctx);
+                await ctx.reply(
+                    `${ctx.session.clientName}, спасибо, что ты с нами! Дарим тебе подарок от ТОП-визажиста города Москвы!`,
+                    { reply_markup: getGiftKeyboard, parse_mode: 'HTML' }
+                );
+            } catch (error) {
+                console.error('Ошибка при добавлении клиента в БД:', error);
+                await ctx.reply('Не удалось сохранить информацию. Пожалуйста, попробуй позже.');
+            }
+        } else if (foundCity.length > 1) {
+            await ctx.reply('Уточни пожалуйста город', {
+                parse_mode: 'HTML',
+                reply_markup: makeInlineKeyboardFromArr(foundCity, 'city_name'),
+            });
+
+            const callbackQuery = await conversation.wait();
+            if (callbackQuery.update.callback_query) {
+                const selectedCity = callbackQuery.update.callback_query.data;
+
+                if (selectedCity === 'abort') {
+                    await ctx.reply('Давай вернемся к предыдущему вопросу!');
+                    return await askForName(conversation, ctx); // Возвращаемся к вопросу об имени
+                } else {
+                    ctx.session.clientCity = selectedCity;
+                    try {
+                        await addClientToDB(ctx);
+                        await ctx.reply(
+                            `${ctx.session.clientName}, спасибо, что ты с нами! Дарим тебе подарок от ТОП-визажиста города Москвы!`,
+                            { reply_markup: getGiftKeyboard, parse_mode: 'HTML' }
+                        );
+                    } catch (error) {
+                        console.error('Ошибка при добавлении клиента в БД:', error);
+                        await ctx.reply(
+                            'Не удалось сохранить информацию. Пожалуйста, попробуй позже.'
+                        );
+                    }
+                }
+            }
+        } else {
+            ctx.session.clientCity = cityName;
+            try {
+                await addNewCityToDB(ctx);
+                await addClientToDB(ctx);
+                await ctx.reply(
+                    `${ctx.session.clientName}, спасибо, что ты с нами! Дарим тебе подарок от ТОП-визажиста города Москвы!`,
+                    { reply_markup: getGiftKeyboard, parse_mode: 'HTML' }
+                );
+            } catch (error) {
+                console.error('Ошибка при добавлении нового города или клиента в БД:', error);
+                await ctx.reply(
+                    'Произошла ошибка при сохранении информации. Попробуй еще раз позже.'
+                );
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка в процессе запроса города:', error);
+        await ctx.reply('Произошла непредвиденная ошибка. Попробуй снова.');
+    }
 }
 
 // Экспортируем функцию
@@ -171,4 +282,6 @@ module.exports = {
     sendGift,
     requestFeedback,
     sendContentToClient,
+    askForName,
+    askForCity,
 };

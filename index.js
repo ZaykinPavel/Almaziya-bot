@@ -1,6 +1,6 @@
 const { botToken, admIds } = require('./config/botConfig');
 
-const { Unit_1_Sculptor, video2, video3 } = require('./config/videoConfig');
+const { Unit_1_Sculptor, Unit_2_Rumyana, Unit_3_Makeup_lips } = require('./config/videoConfig');
 
 const {
     unitMessages,
@@ -15,28 +15,23 @@ const {
 const { banWordsArr } = require('./controllers/banWords');
 
 const {
-    getGiftKeyboard,
     mainKeyboard,
     adminKeyboard,
     returnKeyboard,
     confirmMassMailingKeyboard,
-    stopMassMailingKeyboard,
 } = require('./config/keyboards');
 // импортируем необходимые функции из модуля функций
 const {
     clientVerification,
-    findCity,
-    addClientToDB,
-    addNewCityToDB,
     checkAbortAggreToGetMessages,
     getStatistic,
     updateClientLastVisit,
-    getAllClientsFromDB,
 } = require('./controllers/operationsWithDB');
+
+const { startMassmailing } = require('./handlers/massMailing');
 
 // импортируем необходимые функции из модуля функций
 const {
-    makeInlineKeyboardFromArr,
     setTotalClientsInMessage,
     setStatisticByClientsCityInMessage,
     setPeriodRegistrationInMessage,
@@ -47,6 +42,7 @@ const {
     findExpression,
     findWords,
     sendContentToClient,
+    askForName,
 } = require('./utilites');
 
 // импортируем необходимый нам класс Bot из основной библиотеки grammy.js, а также классы обработчиков ошибок GrammyError и HttpError
@@ -102,10 +98,10 @@ async function handleStartCommand(ctx) {
         } else {
             await updateClientLastVisit(ctx);
             await ctx.reply(
-                `👋 ${clientName}, добрый день! Рады, что вы заглянули в наш магазин ювелирной бижутерии By A&K`,
+                `👋 ${clientName}, добрый день! Рады, что ты заглянула в наш премиальный клуб от бренда ювелирной бижутерии By A&K`,
                 { parse_mode: 'HTML' }
             );
-            await ctx.reply('Выберите интересующий вас контент👇', {
+            await ctx.reply('Выбери интересующий тебя урок👇', {
                 reply_markup: mainKeyboard,
                 parse_mode: 'HTML',
             });
@@ -113,7 +109,7 @@ async function handleStartCommand(ctx) {
     } else {
         await updateClientLastVisit(ctx);
         await ctx.reply(
-            'Привет, красотка! Рады, что ты заглянула в магазин модной бижутерии By A&K.',
+            'Привет, красотка! Рады приветствовать тебя в клубе для избранных от бренда ювелирной бижутерии By A&K❤️',
             { parse_mode: 'HTML' }
         );
         await ctx.conversation.enter('clientIdentify');
@@ -147,9 +143,10 @@ async function handleCallbackQuery(ctx) {
                 }
                 break;
             case 'isAgreeGetMessages':
+                await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
                 await ctx.reply(
                     'Большое спасибо! Будем и дальше стараться делать только полезный контент!',
-                    { parse_mode: 'HTML' }
+                    { parse_mode: 'HTML', reply_markup: mainKeyboard }
                 );
                 break;
 
@@ -203,11 +200,15 @@ async function handleCallbackQuery(ctx) {
                 });
                 break;
             case 'confirmMassMailing':
-                await startMassmailing(ctx);
+                startMassmailing(bot, ctx);
                 ctx.session.attachment = null;
                 break;
             case 'stopMassMailing':
                 ctx.session.isMassMailing = false; // Устанавливаем флаг остановки
+                console.log(
+                    'Массовая рассылка принудительно остановлена. Флаг: ',
+                    ctx.session.isMassMailing
+                ); // Логируем флаг
                 await ctx.reply('Массовая рассылка принудительно остановлена.');
                 // Пробуем изменить разметку только если это необходимо
                 await ctx.reply('Меню администратора', {
@@ -237,105 +238,6 @@ async function handleCallbackQuery(ctx) {
     }
 }
 
-async function startMassmailing(ctx) {
-    // Уведомляем пользователя о начале рассылки
-    const massMailingMessage = await ctx.reply(massMailingMessages.startMassMailing, {
-        reply_markup: stopMassMailingKeyboard,
-    });
-
-    const textForMassMailing = ctx.session.draftMessage || ''; // Если нет текста, устанавливаем пустую строку
-    const attachment = ctx.session.attachment;
-
-    const clientsForMailing = await getAllClientsFromDB();
-    console.log(
-        'Получатели:',
-        clientsForMailing,
-        'Текст рассылки:',
-        textForMassMailing,
-        'Вложение:',
-        attachment
-    );
-
-    // функционал массовой рассылки сообщения
-    for (const client of clientsForMailing) {
-        if (!ctx.session.isMassMailing) {
-            await ctx.reply(massMailingMessages.stopMassMailing.stopMessage);
-            await ctx.reply(massMailingMessages.stopMassMailing.afterStopMessage, {
-                reply_markup: adminKeyboard,
-                parse_mode: 'HTML',
-            });
-            break; // Выходим из функции, если рассылка остановлена
-        }
-
-        const { clienttgid, clientname } = client;
-
-        // Преобразуем clienttgid в число
-        const chatId = parseInt(clienttgid, 10);
-        if (isNaN(chatId)) {
-            console.error(`Некорректный client_tg_id для клиента ${clientname}: ${clienttgid}`);
-            continue; // Пропускаем клиента с некорректным ID
-        }
-
-        try {
-            // Проверяем наличие текста, чтобы избежать подписи undefined
-            const options = textForMassMailing
-                ? { caption: textForMassMailing, parse_mode: 'HTML' }
-                : {};
-
-            if (attachment) {
-                // Проверяем тип вложения и отправляем соответствующее сообщение
-                switch (attachment.type) {
-                    case 'photo':
-                        await bot.api.sendPhoto(chatId, attachment.file_id, options);
-                        break;
-                    case 'video':
-                        await bot.api.sendVideo(chatId, attachment.file_id, options);
-                        break;
-                    case 'document':
-                        await bot.api.sendDocument(chatId, attachment.file_id, options);
-                        break;
-                    case 'audio':
-                        await bot.api.sendAudio(chatId, attachment.file_id, options);
-                        break;
-                    case 'voice':
-                        await bot.api.sendVoice(chatId, attachment.file_id, options);
-                        break;
-                    case 'sticker':
-                        await bot.api.sendSticker(chatId, attachment.file_id);
-                        break;
-                    default:
-                        console.error(`Неизвестный тип вложения: ${attachment.type}`);
-                }
-            } else {
-                // Отправляем только текст, если вложение отсутствует
-                await bot.api.sendMessage(chatId, textForMassMailing, {
-                    parse_mode: 'HTML',
-                });
-            }
-
-            console.log(`Сообщение отправлено клиенту ${clientname} (ID: ${chatId})`);
-        } catch (error) {
-            console.error(
-                `Не удалось отправить сообщение клиенту ${clientname} (ID: ${chatId}):`,
-                error
-            );
-        }
-
-        // Интервал между отправками
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-    }
-
-    console.log('Массовая рассылка завершена.');
-    // Завершение рассылки
-
-    ctx.session.isMassMailing = false; // Сбрасываем флаг
-
-    await ctx.reply(massMailingMessages.endMassMailing, {
-        reply_markup: adminKeyboard,
-        parse_mode: 'HTML',
-    });
-}
-
 async function handleIncomingMessage(ctx) {
     // проверяем, в какой форме приходит сообщение
     const message = (ctx.message.text || ctx.message.caption || '').toLowerCase();
@@ -344,25 +246,28 @@ async function handleIncomingMessage(ctx) {
         await sendContentToClient(
             ctx,
             Unit_1_Sculptor,
-            unitMessages.sculptor.reaction,
-            unitMessages.sculptor.loadingText,
-            unitMessages.sculptor.successText
+            unitMessages.unit1.reaction,
+            unitMessages.unit1.loadingText,
+            unitMessages.unit1.successText,
+            unitMessages.unit1.promotionText
         );
-    } else if (message === 'арабская подвеска') {
+    } else if (message === 'урок 2. румяна') {
         await sendContentToClient(
             ctx,
-            video2,
+            Unit_2_Rumyana,
             unitMessages.unit2.reaction,
             unitMessages.unit2.loadingText,
-            unitMessages.unit2.successText
+            unitMessages.unit2.successText,
+            unitMessages.unit2.promotionText
         );
-    } else if (message === 'кольцо') {
+    } else if (message === 'урок 3. макияж губ') {
         await sendContentToClient(
             ctx,
-            video3,
+            Unit_3_Makeup_lips,
             unitMessages.unit3.reaction,
             unitMessages.unit3.loadingText,
-            unitMessages.unit3.successText
+            unitMessages.unit3.successText,
+            unitMessages.unit3.promotionText
         );
     } else if (findExpression(idQueryWordsArr, message)) {
         await ctx.reply(`Ваш id: ${ctx.from.id}`);
@@ -379,7 +284,7 @@ async function handleIncomingMessage(ctx) {
         const findBanWordTimeout = setTimeout(() => {
             ctx.api.deleteMessage(ctx.chat.id, sentMessage.message_id);
             clearTimeout(findBanWordTimeout);
-        }, 2000);
+        }, banMessages.delay);
     } else if (ctx.session.isMassMailing) {
         // Если отправляется сообщение, то получаем сообщение, а если вложение к картинке или видосу, то текст вложения
         ctx.session.draftMessage = ctx.message.text ? ctx.message.text : ctx.message.caption;
@@ -419,108 +324,5 @@ async function handleIncomingMessage(ctx) {
         );
     } else {
         await ctx.reply(`Не могу распознать ваш вопрос!`);
-    }
-}
-
-// --------------------------
-// функция запрашивает имя пользователя при первичной аутентификации
-async function askForName(conversation, ctx) {
-    while (true) {
-        await ctx.reply('Как я могу к тебе обращаться? Напиши свое имя...', {
-            parse_mode: 'HTML',
-        });
-
-        const clientNameObj = await conversation.wait();
-        const clientTextName = clientNameObj.update.message.text;
-
-        if (clientTextName === '/start') {
-            await ctx.reply('Пожалуйста, введи корректное имя еще раз...', {
-                parse_mode: 'HTML',
-            });
-        } else {
-            ctx.session.clientName = clientTextName;
-            await askForCity(conversation, ctx);
-            break; // выходим из цикла, если имя корректное
-        }
-    }
-}
-
-// функция запрашивает город и при необходимости может возвращать клиента назад к вопросу об имени
-async function askForCity(conversation, ctx) {
-    try {
-        await ctx.reply('Из какого ты города?', { parse_mode: 'HTML' });
-
-        const cityObj = await conversation.wait();
-        const cityName = cityObj.update.message.text.trim();
-
-        const foundCity = await findCity(cityName);
-        console.log('Осуществлен поиск по городам: ', foundCity);
-
-        if (!foundCity) {
-            await ctx.reply('Произошла ошибка при поиске города. Попробуй еще раз.');
-            return await askForCity(conversation, ctx); // Повторный запрос города
-        }
-
-        if (foundCity.length === 1) {
-            ctx.session.clientCity = foundCity[0].city_name;
-            try {
-                await addClientToDB(ctx);
-                await ctx.reply(
-                    `${ctx.session.clientName}, спасибо, что ты с нами! Дарим тебе подарок от ТОП-визажиста города Москвы!`,
-                    { reply_markup: getGiftKeyboard, parse_mode: 'HTML' }
-                );
-            } catch (error) {
-                console.error('Ошибка при добавлении клиента в БД:', error);
-                await ctx.reply('Не удалось сохранить информацию. Пожалуйста, попробуй позже.');
-            }
-        } else if (foundCity.length > 1) {
-            await ctx.reply('Уточни пожалуйста город', {
-                parse_mode: 'HTML',
-                reply_markup: makeInlineKeyboardFromArr(foundCity, 'city_name'),
-            });
-
-            const callbackQuery = await conversation.wait();
-            if (callbackQuery.update.callback_query) {
-                const selectedCity = callbackQuery.update.callback_query.data;
-
-                if (selectedCity === 'abort') {
-                    await ctx.reply('Давай вернемся к предыдущему вопросу!');
-                    return await askForName(conversation, ctx); // Возвращаемся к вопросу об имени
-                } else {
-                    ctx.session.clientCity = selectedCity;
-                    try {
-                        await addClientToDB(ctx);
-                        await ctx.reply(
-                            `${ctx.session.clientName}, спасибо, что ты с нами! Дарим тебе подарок от ТОП-визажиста города Москвы!`,
-                            { reply_markup: getGiftKeyboard, parse_mode: 'HTML' }
-                        );
-                    } catch (error) {
-                        console.error('Ошибка при добавлении клиента в БД:', error);
-                        await ctx.reply(
-                            'Не удалось сохранить информацию. Пожалуйста, попробуй позже.'
-                        );
-                    }
-                }
-            }
-        } else {
-            // Если город не нашелся, добавляем новый город в БД
-            ctx.session.clientCity = cityName;
-            try {
-                await addNewCityToDB(ctx);
-                await addClientToDB(ctx);
-                await ctx.reply(
-                    `${ctx.session.clientName}, спасибо, что ты с нами! Дарим тебе подарок от ТОП-визажиста города Москвы!`,
-                    { reply_markup: getGiftKeyboard, parse_mode: 'HTML' }
-                );
-            } catch (error) {
-                console.error('Ошибка при добавлении нового города или клиента в БД:', error);
-                await ctx.reply(
-                    'Произошла ошибка при сохранении информации. Попробуй еще раз позже.'
-                );
-            }
-        }
-    } catch (error) {
-        console.error('Ошибка в процессе запроса города:', error);
-        await ctx.reply('Произошла непредвиденная ошибка. Попробуй снова.');
     }
 }
