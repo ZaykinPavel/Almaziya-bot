@@ -43,6 +43,7 @@ const {
     findWords,
     sendContentToClient,
     askForName,
+    setOnlyAgreeClientsInMessage,
 } = require('./utilites');
 
 // импортируем необходимый нам класс Bot из основной библиотеки grammy.js, а также классы обработчиков ошибок GrammyError и HttpError
@@ -314,7 +315,7 @@ async function handleIncomingMessage(ctx) {
                 ctx.session.draftMessage
                     ? ctx.session.draftMessage
                     : '(Отправка вложения без текста)'
-            }</b>\n--------------\nСообщение получат: ${setTotalClientsInMessage(
+            }</b>\n--------------\nСообщение получат: ${setOnlyAgreeClientsInMessage(
                 statObj
             )} клиентов.\n\n Подтверждаете рассылку?`,
             {

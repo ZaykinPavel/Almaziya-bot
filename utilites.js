@@ -54,6 +54,10 @@ const setTotalClientsInMessage = (stat) => {
     return `${stat.totalClients.number_of_clients}`;
 };
 
+const setOnlyAgreeClientsInMessage = (stat) => {
+    return `${stat.agreeClients[0].total}`;
+};
+
 const setTotalAgreeClientsInMessage = (stat) => {
     return `<b>Согласие на рассылку:</b>\nСогласны: ${stat.agreeClients[0].total}\nНе согласны: ${stat.agreeClients[1].total}`;
 };
@@ -284,4 +288,5 @@ module.exports = {
     sendContentToClient,
     askForName,
     askForCity,
+    setOnlyAgreeClientsInMessage,
 };

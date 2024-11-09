@@ -120,9 +120,10 @@ const findCity = async (strToFind) => {
     }
 };
 
-const getAllClientsFromDB = async () => {
+// получаем всех клиентов из базы данных
+const getAllAgreeClientsFromDB = async () => {
     const getAllClientsQuery =
-        'SELECT client_tg_id AS clientTgId, client_name AS clientName FROM clients;';
+        'SELECT client_tg_id AS clientTgId, client_name AS clientName FROM clients WHERE agree_to_get_messages=TRUE;';
     let client;
     try {
         client = await pool.connect();
@@ -142,6 +143,7 @@ const getAllClientsFromDB = async () => {
     }
 };
 
+// получаем основную статистику о клиентах
 const getStatistic = async () => {
     const totalClientsQuery = 'SELECT COUNT(client_id) AS number_of_clients FROM clients;'; // Запрос должен быть в кавычках
     const clientsByCitiesQuery =
@@ -242,5 +244,5 @@ module.exports = {
     checkAbortAggreToGetMessages,
     getStatistic,
     updateClientLastVisit,
-    getAllClientsFromDB,
+    getAllAgreeClientsFromDB,
 };

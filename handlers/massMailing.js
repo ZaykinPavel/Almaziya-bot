@@ -1,4 +1,4 @@
-const { getAllClientsFromDB } = require('../controllers/operationsWithDB');
+const { getAllAgreeClientsFromDB } = require('../controllers/operationsWithDB');
 const { adminKeyboard, stopMassMailingKeyboard } = require('../config/keyboards');
 const { massMailingMessages } = require('../controllers/messages');
 
@@ -12,7 +12,7 @@ async function startMassmailing(bot, ctx) {
     const textForMassMailing = ctx.session.draftMessage || ''; // Если нет текста, устанавливаем пустую строку
     const attachment = ctx.session.attachment;
 
-    const clientsForMailing = await getAllClientsFromDB();
+    const clientsForMailing = await getAllAgreeClientsFromDB();
     console.log(
         'Получатели:',
         clientsForMailing,
