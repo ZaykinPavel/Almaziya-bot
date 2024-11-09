@@ -243,7 +243,7 @@ async function handleIncomingMessage(ctx) {
     // проверяем, в какой форме приходит сообщение
     const message = (ctx.message.text || ctx.message.caption || '').toLowerCase();
 
-    if (message === 'урок 1. скульптор') {
+    if (message === 'скульптор') {
         await sendContentToClient(
             ctx,
             Unit_1_Sculptor,
@@ -252,7 +252,7 @@ async function handleIncomingMessage(ctx) {
             unitMessages.unit1.successText,
             unitMessages.unit1.promotionText
         );
-    } else if (message === 'урок 2. румяна') {
+    } else if (message === 'румяна') {
         await sendContentToClient(
             ctx,
             Unit_2_Rumyana,
@@ -261,7 +261,7 @@ async function handleIncomingMessage(ctx) {
             unitMessages.unit2.successText,
             unitMessages.unit2.promotionText
         );
-    } else if (message === 'урок 3. макияж губ') {
+    } else if (message === 'макияж губ') {
         await sendContentToClient(
             ctx,
             Unit_3_Makeup_lips,
