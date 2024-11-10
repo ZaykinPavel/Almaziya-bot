@@ -30,6 +30,16 @@ const massMailingKeyboard = new InlineKeyboard()
     .row()
     .text('Вернуться ↩️', 'adminKeyboard')
     .row();
+// .text('📅 По дате последней рассылки', 'massMailingByLastMailingInterval')
+// .row()
+
+const entervalLastMailingKeyboard = new InlineKeyboard()
+    .text('10', '10_lastMailing')
+    .text('15', '15_lastMailing')
+    .text('30', '30_lastMailing')
+    .row()
+    .text('Вернуться ↩️', 'adminKeyboard')
+    .row();
 
 const returnKeyboard = new InlineKeyboard().text('Вернуться ↩️', 'adminKeyboard');
 
@@ -58,4 +68,5 @@ module.exports = {
     stopMassMailingKeyboard,
     massMailingKeyboard,
     confirmMassMailingJustRegisteredClientsKeyboard,
+    entervalLastMailingKeyboard,
 };

@@ -3,6 +3,7 @@ const dbConfig = require('../config/dbconfig');
 
 const pool = new Pool(dbConfig);
 
+// функция обновляет дату последнего посещения клиентом бота
 const updateClientLastVisit = async (ctx) => {
     const clientIdToString = ctx.from.id.toString();
     if (clientIdToString) {
@@ -182,7 +183,7 @@ const getJustRegisteredClientsFromDB = async () => {
     }
 };
 
-// получаем всех клиентов из базы данных
+// получаем всех клиентов, согласных на рассылку из базы данных
 const getAllAgreeClientsFromDB = async () => {
     const getAllClientsQuery =
         'SELECT client_tg_id AS clientTgId, client_name AS clientName FROM clients WHERE agree_to_get_messages=TRUE;';
@@ -195,6 +196,36 @@ const getAllAgreeClientsFromDB = async () => {
         return recordsAllClients.rows; // Возвращаем записи
     } catch (err) {
         console.error('Ошибка подключения при выборке всех согласных на рассылку клиентов', err);
+        return null; // Возвращаем null в случае ошибки
+    } finally {
+        // Освобождаем соединение обратно в пул
+        if (client) {
+            client.release();
+            console.log('Соединение закрыто');
+        }
+    }
+};
+
+// получаем всех клиентов, по сроку давности последней рассылки
+const getAllClientsByLastMailingDateFromDB = async (days) => {
+    const getAllClientsByLastMailingQuery =
+        'SELECT client_id, client_name FROM clients WHERE last_mailing_date < NOW() - INTERVAL $1;';
+    let client;
+    try {
+        client = await pool.connect();
+        console.log(
+            'Подключение для выборки всех клиентов по интервалу с момента последней рассылки прошло успешно'
+        );
+        const recordsAllClients = await client.query(getAllClientsByLastMailingQuery, [
+            `${days} days`,
+        ]);
+
+        return recordsAllClients.rows; // Возвращаем записи
+    } catch (err) {
+        console.error(
+            'Ошибка подключения при выборке всех клиентов по интервалу последней рассылки',
+            err
+        );
         return null; // Возвращаем null в случае ошибки
     } finally {
         // Освобождаем соединение обратно в пул
@@ -313,4 +344,5 @@ module.exports = {
     getAllAgreeClientsFromDB,
     updateLastMailing,
     getJustRegisteredClientsFromDB,
+    getAllClientsByLastMailingDateFromDB,
 };
