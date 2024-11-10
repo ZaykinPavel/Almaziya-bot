@@ -118,12 +118,20 @@ const findCity = async (strToFind) => {
         OR city_name LIKE $9 
         OR city_name LIKE $10 
         OR city_name LIKE $11 
-        OR city_name LIKE $12`;
+        OR city_name LIKE $12
+        OR city_name LIKE $13
+        OR city_name LIKE $14
+        OR city_name LIKE $15
+        OR city_name LIKE $16`;
     const searchTerms = [
         `${strToFind}`,
         `${strToFind}%`,
         `%${strToFind}%`,
         `%${strToFind}`,
+        `${capitalizeFirstLetter(strToFind)}`,
+        `${capitalizeFirstLetter(strToFind)}%`,
+        `%${capitalizeFirstLetter(strToFind)}%`,
+        `%${capitalizeFirstLetter(strToFind)}`,
         `${lastWordInStr}`,
         `${lastWordInStr}%`,
         `%${lastWordInStr}%`,
@@ -288,6 +296,10 @@ const addNewCityToDB = async (ctx) => {
         }
     }
 };
+
+function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
 
 // Экспортируем функцию
 module.exports = {

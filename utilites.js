@@ -4,12 +4,11 @@ const {
     mainKeyboard,
 } = require('./config/keyboards');
 
-const { unitMessages, commonMessages, registrationMessages } = require('./controllers/messages');
-
 const { giftVideo } = require('./config/videoConfig');
 
 const { addClientToDB, addNewCityToDB, findCity } = require('./controllers/operationsWithDB'); // импорт необходимых функций из модуля БД
 const { getGiftKeyboard } = require('./config/keyboards'); // импорт необходимых клавиатур
+const { unitMessages, commonMessages, registrationMessages } = require('./controllers/messages');
 
 // функция проверяет есть ли в сообщении любое слово из заданного массива
 const findWords = (arr, message) => {
@@ -114,31 +113,37 @@ const setStatisticByClientsCityInMessage = (stat) => {
 };
 
 async function sendGift(ctx) {
+    await safelyEditMessageReplyMarkup(ctx, { inline_keyboard: [] });
     await ctx.reply(commonMessages.waiting, { parse_mode: 'HTML' });
     await ctx.replyWithVideo(giftVideo);
     const motivatingMessageTimeout = setTimeout(async () => {
-        await ctx.reply(unitMessages.introUnitMessages.prepareGiftText, {
+        await ctx.reply(unitMessages.introUnitMessages.prepareGift.text, {
             reply_markup: mainKeyboard,
             parse_mode: 'HTML',
         });
         const sentInstagramTimeout = setTimeout(async () => {
-            await ctx.reply(unitMessages.introUnitMessages.sharePartnerLink, {
+            await ctx.reply(unitMessages.introUnitMessages.sharePartnerLink.text, {
                 reply_markup: mainKeyboard,
                 parse_mode: 'HTML',
             });
             if (ctx.session.clientInfo) {
                 const isGiftUsefulTimeout = setTimeout(() => {
-                    ctx.reply(`${ctx.session.clientInfo.client_name}, тебе понравился подарок?`, {
-                        reply_markup: isGiftUsefulKeyboard,
-                        parse_mode: 'HTML',
-                    });
+                    ctx.reply(
+                        unitMessages.introUnitMessages.doYouLikeTheGift.text(
+                            ctx.session.clientInfo.client_name
+                        ),
+                        {
+                            reply_markup: isGiftUsefulKeyboard,
+                            parse_mode: 'HTML',
+                        }
+                    );
                     clearTimeout(isGiftUsefulTimeout);
-                }, 40000);
+                }, unitMessages.introUnitMessages.doYouLikeTheGift.delay);
             }
             clearTimeout(sentInstagramTimeout);
-        }, 5000);
+        }, unitMessages.introUnitMessages.sharePartnerLink.delay);
         clearTimeout(motivatingMessageTimeout);
-    }, 30000);
+    }, unitMessages.introUnitMessages.prepareGift.delay);
 }
 
 async function requestFeedback(ctx) {
@@ -208,7 +213,7 @@ async function askForCity(conversation, ctx) {
             try {
                 await addClientToDB(ctx);
                 await ctx.reply(
-                    `${ctx.session.clientName}, спасибо, что ты с нами! Дарим тебе подарок от ТОП-визажиста города Москвы!`,
+                    unitMessages.introUnitMessages.takeGiftText(ctx.session.clientName),
                     { reply_markup: getGiftKeyboard, parse_mode: 'HTML' }
                 );
             } catch (error) {
@@ -233,7 +238,7 @@ async function askForCity(conversation, ctx) {
                     try {
                         await addClientToDB(ctx);
                         await ctx.reply(
-                            `${ctx.session.clientName}, спасибо, что ты с нами! Дарим тебе подарок от ТОП-визажиста города Москвы!`,
+                            unitMessages.introUnitMessages.takeGiftText(ctx.session.clientName),
                             { reply_markup: getGiftKeyboard, parse_mode: 'HTML' }
                         );
                     } catch (error) {
@@ -248,7 +253,7 @@ async function askForCity(conversation, ctx) {
                 await addNewCityToDB(ctx);
                 await addClientToDB(ctx);
                 await ctx.reply(
-                    `${ctx.session.clientName}, спасибо, что ты с нами! Дарим тебе подарок от ТОП-визажиста города Москвы!`,
+                    unitMessages.introUnitMessages.takeGiftText(ctx.session.clientName),
                     { reply_markup: getGiftKeyboard, parse_mode: 'HTML' }
                 );
             } catch (error) {
