@@ -1,8 +1,8 @@
-const { getAllAgreeClientsFromDB } = require('../controllers/operationsWithDB');
+const { updateLastMailing } = require('../controllers/operationsWithDB');
 const { adminKeyboard, stopMassMailingKeyboard } = require('../config/keyboards');
 const { massMailingMessages } = require('../controllers/messages');
 
-async function startMassmailing(bot, ctx) {
+async function startMassmailing(bot, ctx, clientsForMailing) {
     let breakMassmailing = false;
     // Уведомляем пользователя о начале рассылки
     const massMailingMessage = await ctx.reply(massMailingMessages.startMassMailing, {
@@ -12,7 +12,6 @@ async function startMassmailing(bot, ctx) {
     const textForMassMailing = ctx.session.draftMessage || ''; // Если нет текста, устанавливаем пустую строку
     const attachment = ctx.session.attachment;
 
-    const clientsForMailing = await getAllAgreeClientsFromDB();
     console.log(
         'Получатели:',
         clientsForMailing,
@@ -63,6 +62,7 @@ async function startMassmailing(bot, ctx) {
             }
 
             console.log(`Сообщение отправлено клиенту ${clientname} (ID: ${chatId})`);
+            updateLastMailing(clienttgid);
         } catch (error) {
             console.error(
                 `Не удалось отправить сообщение клиенту ${clientname} (ID: ${chatId}):`,

@@ -18,17 +18,31 @@ const mainKeyboard = new Keyboard()
     .oneTime();
 
 const adminKeyboard = new InlineKeyboard()
-    .text('Рассылка всем', 'massMailing')
+    .text('✉️ Рассылка', 'massMailingOperations')
     .row()
-    .text('Статистика', 'getStatistic')
+    .text('📈 Статистика', 'getStatistic')
     .row();
 
-const returnKeyboard = new InlineKeyboard().text('Вернуться', 'adminKeyboard');
+const massMailingKeyboard = new InlineKeyboard()
+    .text('💼 По всем клиентам', 'massMailingAll')
+    .row()
+    .text('🤝 Впервые зарегистрированным', 'massMailingJustRegistered')
+    .row()
+    .text('Вернуться ↩️', 'adminKeyboard')
+    .row();
+
+const returnKeyboard = new InlineKeyboard().text('Вернуться ↩️', 'adminKeyboard');
 
 const confirmMassMailingKeyboard = new InlineKeyboard()
-    .text('Подтвердить', 'confirmMassMailing')
+    .text('✅ Подтвердить', 'confirmMassMailing')
     .row()
-    .text('Вернуться', 'adminKeyboard')
+    .text('Вернуться ↩️', 'adminKeyboard')
+    .row();
+
+const confirmMassMailingJustRegisteredClientsKeyboard = new InlineKeyboard()
+    .text('✅ Подтвердить', 'confirmMassMailingJustRegistered')
+    .row()
+    .text('Вернуться ↩️', 'adminKeyboard')
     .row();
 
 const stopMassMailingKeyboard = new InlineKeyboard().text('Остановить рассылку', 'stopMassMailing');
@@ -42,4 +56,6 @@ module.exports = {
     returnKeyboard,
     confirmMassMailingKeyboard,
     stopMassMailingKeyboard,
+    massMailingKeyboard,
+    confirmMassMailingJustRegisteredClientsKeyboard,
 };

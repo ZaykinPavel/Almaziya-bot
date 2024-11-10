@@ -10,40 +10,41 @@ const {
     idQueryWordsArr,
     greetingsWordsArr,
     commonQuestionArr,
+    registrationMessages,
 } = require('./controllers/messages');
 
 const { banWordsArr } = require('./controllers/banWords');
+
+const { handleStatistic } = require('./handlers/getStatistic');
 
 const {
     mainKeyboard,
     adminKeyboard,
     returnKeyboard,
     confirmMassMailingKeyboard,
+    massMailingKeyboard,
+    confirmMassMailingJustRegisteredClientsKeyboard,
 } = require('./config/keyboards');
 // импортируем необходимые функции из модуля функций
 const {
     clientVerification,
     checkAbortAggreToGetMessages,
-    getStatistic,
     updateClientLastVisit,
+    getAllAgreeClientsFromDB,
+    getJustRegisteredClientsFromDB,
 } = require('./controllers/operationsWithDB');
 
 const { startMassmailing } = require('./handlers/massMailing');
 
 // импортируем необходимые функции из модуля функций
 const {
-    setTotalClientsInMessage,
-    setStatisticByClientsCityInMessage,
-    setPeriodRegistrationInMessage,
-    setTotalAgreeClientsInMessage,
-    setPeriodLastVisitInMessage,
     sendGift,
     requestFeedback,
     findExpression,
     findWords,
     sendContentToClient,
     askForName,
-    setOnlyAgreeClientsInMessage,
+    safelyEditMessageReplyMarkup,
 } = require('./utilites');
 
 // импортируем необходимый нам класс Bot из основной библиотеки grammy.js, а также классы обработчиков ошибок GrammyError и HttpError
@@ -89,36 +90,28 @@ async function handleStartCommand(ctx) {
         const clientName = ctx.session.clientInfo.client_name;
         if (admIds.includes(ctx.from.id)) {
             await updateClientLastVisit(ctx);
-            await ctx.reply(
-                `👋 ${clientName}, привет! Как администратору бота тебе доступны специальные функции 👇`,
-                {
-                    reply_markup: adminKeyboard,
-                    parse_mode: 'HTML',
-                }
-            );
+            await ctx.reply(commonMessages.greetings.adminGreetingText(clientName), {
+                reply_markup: adminKeyboard,
+                parse_mode: 'HTML',
+            });
         } else {
             await updateClientLastVisit(ctx);
-            await ctx.reply(
-                `👋 ${clientName}, добрый день! Рады, что ты заглянула в наш премиальный клуб от бренда ювелирной бижутерии By A&K`,
-                { parse_mode: 'HTML' }
-            );
-            await ctx.reply('Выбери интересующий тебя урок👇', {
+            await ctx.reply(commonMessages.greetings.familiarClientGreetingText(clientName), {
+                parse_mode: 'HTML',
+            });
+            await ctx.reply(unitMessages.introUnitMessages.chooseUnitText, {
                 reply_markup: mainKeyboard,
                 parse_mode: 'HTML',
             });
         }
     } else {
-        await updateClientLastVisit(ctx);
-        await ctx.reply(
-            'Привет, красотка! Рады приветствовать тебя в клубе для избранных от бренда ювелирной бижутерии By A&K❤️',
-            { parse_mode: 'HTML' }
-        );
+        await ctx.reply(registrationMessages.startNewClientText, { parse_mode: 'HTML' });
         await ctx.conversation.enter('clientIdentify');
     }
 }
 
 async function clientIdentify(conversation, ctx) {
-    // Начинаем с вопроса о имени
+    // начинаем идентификацию с вопроса об имени
     await askForName(conversation, ctx);
 }
 
@@ -132,85 +125,105 @@ async function handleCallbackQuery(ctx) {
                 await sendGift(ctx);
                 break;
             case 'isUseful':
-                await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+                await safelyEditMessageReplyMarkup(ctx, { inline_keyboard: [] });
                 await requestFeedback(ctx);
                 break;
             case 'isNotUseful':
             case 'isNotAgreeGetMessages':
-                await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
-                await ctx.reply('Спасибо за уделённое время!😃', { parse_mode: 'HTML' });
+                await safelyEditMessageReplyMarkup(ctx, { inline_keyboard: [] });
+
+                await ctx.reply(unitMessages.introUnitMessages.thanksText, { parse_mode: 'HTML' });
                 if (action === 'isNotAgreeGetMessages') {
                     await checkAbortAggreToGetMessages(ctx.session.clientInfo.client_tg_id);
                 }
                 break;
             case 'isAgreeGetMessages':
-                await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
-                await ctx.reply(
-                    'Большое спасибо! Будем и дальше стараться делать только полезный контент!',
-                    { parse_mode: 'HTML', reply_markup: mainKeyboard }
+                await safelyEditMessageReplyMarkup(ctx, { inline_keyboard: [] });
+                await ctx.reply(unitMessages.introUnitMessages.thanksForAgreeMailingText, {
+                    parse_mode: 'HTML',
+                    reply_markup: mainKeyboard,
+                });
+                break;
+            case 'getStatistic':
+                await handleStatistic(ctx);
+                break;
+            case 'massMailingOperations':
+                await safelyEditMessageReplyMarkup(ctx, { inline_keyboard: [] });
+                const chooseMailingVariant = await ctx.reply(
+                    massMailingMessages.chooseMailingVariant,
+                    {
+                        reply_markup: massMailingKeyboard,
+                    }
                 );
                 break;
-
-            case 'getStatistic':
-                await ctx.reply(`Секундочку...`, {
-                    parse_mode: 'HTML',
-                });
-                const statObj = await getStatistic();
-                console.log(statObj);
-                if (statObj) {
-                    await ctx.reply(
-                        `СТАТИСТИКА\n---------------\nВсего клиентов: ${setTotalClientsInMessage(
-                            statObj
-                        )} чел.\n---------------\n${setStatisticByClientsCityInMessage(
-                            statObj
-                        )}\n${setTotalAgreeClientsInMessage(
-                            statObj
-                        )}\n\n${setPeriodRegistrationInMessage(
-                            statObj
-                        )}\n\n${setPeriodLastVisitInMessage(statObj)}`,
-                        { parse_mode: 'HTML', reply_markup: adminKeyboard }
-                    );
-                } else {
-                    await ctx.reply(`База данных пока пустая!`, {
-                        parse_mode: 'HTML',
-                        reply_markup: adminKeyboard,
-                    });
-                }
-
-                break;
-            case 'massMailing':
+            case 'massMailingAll':
                 // Удаляем предыдущее сообщение, если оно существует
                 if (ctx.session.massMailingMessageId) {
                     await ctx.api.deleteMessage(ctx.chat.id, ctx.session.massMailingMessageId);
                 }
-                const massMailingMessage = await ctx.reply('Введи текст сообщения...', {
-                    reply_markup: returnKeyboard,
-                });
-                ctx.session.massMailingMessageId = massMailingMessage.message_id; // Сохраняем ID сообщения
+                const massMailingMessageAll = await ctx.reply(
+                    massMailingMessages.getTextForMailing,
+                    {
+                        reply_markup: returnKeyboard,
+                    }
+                );
+                ctx.session.massMailingMessageId = massMailingMessageAll.message_id; // Сохраняем ID сообщения
                 ctx.session.isMassMailing = true; // Устанавливаем флаг для отслеживания массовой рассылки
+                ctx.session.mailingVariant = 'allClients';
+                break;
+            case 'massMailingJustRegistered':
+                // Удаляем предыдущее сообщение, если оно существует
+                if (ctx.session.massMailingMessageId) {
+                    await ctx.api.deleteMessage(ctx.chat.id, ctx.session.massMailingMessageId);
+                }
+                const statObj = await getJustRegisteredClientsFromDB();
+                if (statObj.length !== 0) {
+                    const massMailingMessageJustRegistered = await ctx.reply(
+                        massMailingMessages.getTextForMailing,
+                        {
+                            reply_markup: returnKeyboard,
+                        }
+                    );
+                    ctx.session.massMailingMessageId = massMailingMessageJustRegistered.message_id; // Сохраняем ID сообщения
+                    ctx.session.isMassMailing = true; // Устанавливаем флаг для отслеживания массовой рассылки
+                    ctx.session.mailingVariant = 'justRegisteredClients';
+                } else {
+                    await ctx.reply(massMailingMessages.clientsNotFoundText, {
+                        reply_markup: massMailingKeyboard,
+                        parse_mode: 'HTML',
+                    });
+                }
                 break;
             case 'adminKeyboard':
+                await safelyEditMessageReplyMarkup(ctx, { inline_keyboard: [] });
                 // Удаляем сообщение массовой рассылки, если оно существует
                 if (ctx.session.massMailingMessageId) {
                     await ctx.api.deleteMessage(ctx.chat.id, ctx.session.massMailingMessageId);
                     ctx.session.massMailingMessageId = null; // Сбрасываем ID после удаления
                 }
-                await ctx.reply('Возвращаемся в главное меню...', {
+                await ctx.reply(commonMessages.abortToMainMenuText, {
                     parse_mode: 'HTML',
                     reply_markup: adminKeyboard,
                 });
                 break;
             case 'confirmMassMailing':
-                startMassmailing(bot, ctx);
+                const clientsForMailing = await getAllAgreeClientsFromDB();
+                startMassmailing(bot, ctx, clientsForMailing);
+                ctx.session.attachment = null;
+                break;
+            case 'confirmMassMailingJustRegistered':
+                const justRegisteredClientsForMailing = await getJustRegisteredClientsFromDB();
+                startMassmailing(bot, ctx, justRegisteredClientsForMailing);
                 ctx.session.attachment = null;
                 break;
             case 'stopMassMailing':
                 ctx.session.isMassMailing = false; // Устанавливаем флаг остановки
+                ctx.session.mailingVariant = null;
                 console.log(
                     'Массовая рассылка принудительно остановлена. Флаг: ',
                     ctx.session.isMassMailing
                 ); // Логируем флаг
-                await ctx.reply('Массовая рассылка принудительно остановлена.');
+                await ctx.reply(massMailingMessages.stopMassMailing.stopMessage);
                 // Пробуем изменить разметку только если это необходимо
                 await ctx.reply('Меню администратора', {
                     reply_markup: adminKeyboard,
@@ -231,9 +244,12 @@ async function handleCallbackQuery(ctx) {
         // Проверяем, есть ли сообщение для редактирования
         if (ctx.session.massMailingMessageId) {
             try {
-                await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+                await safelyEditMessageReplyMarkup(ctx, { inline_keyboard: [] });
             } catch (error) {
-                console.error('Ошибка при редактировании сообщения:', error.message);
+                console.error(
+                    'Ошибка при редактировании сообщения (Конечная проверка):',
+                    error.message
+                );
             }
         }
     }
@@ -309,20 +325,37 @@ async function handleIncomingMessage(ctx) {
             ctx.session.attachment = { type: 'sticker', file_id: ctx.message.sticker.file_id };
         }
 
-        const statObj = await getStatistic();
-        await ctx.reply(
-            `ПОДТВЕРЖДЕНИЕ РАССЫЛКИ\nБудет отправлено следующее сообщение:\n--------------\n<b>${
-                ctx.session.draftMessage
-                    ? ctx.session.draftMessage
-                    : '(Отправка вложения без текста)'
-            }</b>\n--------------\nСообщение получат: ${setOnlyAgreeClientsInMessage(
-                statObj
-            )} клиентов.\n\n Подтверждаете рассылку?`,
-            {
-                reply_markup: confirmMassMailingKeyboard,
-                parse_mode: 'HTML',
-            }
-        );
+        if (ctx.session.mailingVariant == 'allClients') {
+            const statObj = await getAllAgreeClientsFromDB();
+            await ctx.reply(
+                `ПОДТВЕРЖДЕНИЕ РАССЫЛКИ\nБудет отправлено следующее сообщение:\n--------------\n<b>${
+                    ctx.session.draftMessage
+                        ? ctx.session.draftMessage
+                        : '(Отправка вложения без текста)'
+                }</b>\n--------------\nСообщение получат: ${
+                    statObj.length
+                } клиентов.\n\n Подтверждаете рассылку?`,
+                {
+                    reply_markup: confirmMassMailingKeyboard,
+                    parse_mode: 'HTML',
+                }
+            );
+        } else if (ctx.session.mailingVariant == 'justRegisteredClients') {
+            const statObj = await getJustRegisteredClientsFromDB();
+            await ctx.reply(
+                `ПОДТВЕРЖДЕНИЕ РАССЫЛКИ\nБудет отправлено следующее сообщение:\n--------------\n<b>${
+                    ctx.session.draftMessage
+                        ? ctx.session.draftMessage
+                        : '(Отправка вложения без текста)'
+                }</b>\n--------------\nСообщение получат: ${
+                    statObj.length
+                } клиентов.\n\n Подтверждаете рассылку?`,
+                {
+                    reply_markup: confirmMassMailingJustRegisteredClientsKeyboard,
+                    parse_mode: 'HTML',
+                }
+            );
+        }
     } else {
         await ctx.reply(`Не могу распознать ваш вопрос!`);
     }

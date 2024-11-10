@@ -29,6 +29,35 @@ const updateClientLastVisit = async (ctx) => {
     }
 };
 
+// функция обновляет дату последней рассылки у клиента
+const updateLastMailing = async (clientId) => {
+    const clientIdToString = clientId.toString();
+    if (clientIdToString) {
+        const updateLastMailingQuery =
+            'UPDATE clients SET last_mailing_date = CURRENT_TIMESTAMP WHERE client_tg_id=$1'; // Запрос должен быть в кавычках
+        let client;
+        try {
+            client = await pool.connect();
+            console.log(
+                'Подключение для обновления даты последней рассылки клиенту прошло успешно'
+            );
+            const records = await client.query(updateLastMailingQuery, [`${clientIdToString}`]);
+            return;
+        } catch (err) {
+            console.error('Ошибка подключения при обновлении даты последней рассылки клиенту', err);
+            return null; // Возвращаем null в случае ошибки
+        } finally {
+            // Освобождаем соединение обратно в пул
+            if (client) {
+                client.release();
+                console.log('Соединение закрыто');
+            }
+        }
+    } else {
+        return;
+    }
+};
+
 // функция делает первичную идентификацию клиента по базе на основании его ID
 const clientVerification = async (ctx) => {
     const clientIdToString = ctx.from.id.toString();
@@ -121,18 +150,43 @@ const findCity = async (strToFind) => {
 };
 
 // получаем всех клиентов из базы данных
+const getJustRegisteredClientsFromDB = async () => {
+    const getJustRegisteredClientsQuery =
+        'SELECT client_tg_id AS clientTgId, client_name AS clientName FROM clients WHERE agree_to_get_messages=TRUE AND last_mailing_date IS NULL;';
+    let client;
+    try {
+        client = await pool.connect();
+        console.log(
+            'Подключение для сбора информации о впервые зарегистрированных клиентах прошло успешно'
+        );
+        const recordsAllClients = await client.query(getJustRegisteredClientsQuery);
+
+        return recordsAllClients.rows; // Возвращаем записи
+    } catch (err) {
+        console.error('Ошибка подключения при выборе впервые зарегистрированных клиентов', err);
+        return null; // Возвращаем null в случае ошибки
+    } finally {
+        // Освобождаем соединение обратно в пул
+        if (client) {
+            client.release();
+            console.log('Соединение закрыто');
+        }
+    }
+};
+
+// получаем всех клиентов из базы данных
 const getAllAgreeClientsFromDB = async () => {
     const getAllClientsQuery =
         'SELECT client_tg_id AS clientTgId, client_name AS clientName FROM clients WHERE agree_to_get_messages=TRUE;';
     let client;
     try {
         client = await pool.connect();
-        console.log('Подключение для сбора статистики о клиентах прошло успешно');
+        console.log('Подключение для выборки всех согласных на рассылку клиентов прошло успешно');
         const recordsAllClients = await client.query(getAllClientsQuery);
 
         return recordsAllClients.rows; // Возвращаем записи
     } catch (err) {
-        console.error('Ошибка подключения при сборе статистики о клиентах', err);
+        console.error('Ошибка подключения при выборке всех согласных на рассылку клиентов', err);
         return null; // Возвращаем null в случае ошибки
     } finally {
         // Освобождаем соединение обратно в пул
@@ -245,4 +299,6 @@ module.exports = {
     getStatistic,
     updateClientLastVisit,
     getAllAgreeClientsFromDB,
+    updateLastMailing,
+    getJustRegisteredClientsFromDB,
 };
