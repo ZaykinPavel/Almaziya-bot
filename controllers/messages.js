@@ -98,6 +98,7 @@ const massMailingMessages = {
     chooseMailingVariant: 'Выберите вариант массовой рассылки...',
     getTextForMailing: 'Введи текст сообщения...',
     clientsNotFoundText: 'Такие клиенты не найдены. Попробуй другой вариант рассылки',
+    setIntervalForMassMailingText: 'Выбери интервал для массовой рассылки...',
     stopMassMailing: {
         stopMessage: 'Массовая рассылка принудительно остановлена.',
         afterStopMessage: 'Меню администратора',

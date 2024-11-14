@@ -23,6 +23,7 @@ async function startMassmailing(bot, ctx, clientsForMailing) {
 
     // Функция для отправки сообщений с проверкой флага остановки
     const sendMessage = async (client, text, attachment) => {
+        console.log('Подготовлено для массовой рассылки:', client);
         const { clienttgid, clientname } = client;
         const chatId = parseInt(clienttgid, 10);
 

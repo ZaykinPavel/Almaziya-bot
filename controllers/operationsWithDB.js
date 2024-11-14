@@ -208,17 +208,14 @@ const getAllAgreeClientsFromDB = async () => {
 
 // получаем всех клиентов, по сроку давности последней рассылки
 const getAllClientsByLastMailingDateFromDB = async (days) => {
-    const getAllClientsByLastMailingQuery =
-        'SELECT client_id, client_name FROM clients WHERE last_mailing_date < NOW() - INTERVAL $1;';
+    const getAllClientsByLastMailingQuery = `SELECT client_tg_id AS clientTgId, client_name FROM clients WHERE agree_to_get_messages=TRUE AND last_mailing_date < NOW() - INTERVAL '${days} days'`;
     let client;
     try {
         client = await pool.connect();
         console.log(
             'Подключение для выборки всех клиентов по интервалу с момента последней рассылки прошло успешно'
         );
-        const recordsAllClients = await client.query(getAllClientsByLastMailingQuery, [
-            `${days} days`,
-        ]);
+        const recordsAllClients = await client.query(getAllClientsByLastMailingQuery);
 
         return recordsAllClients.rows; // Возвращаем записи
     } catch (err) {

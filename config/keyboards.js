@@ -28,15 +28,15 @@ const massMailingKeyboard = new InlineKeyboard()
     .row()
     .text('🤝 Впервые зарегистрированным', 'massMailingJustRegistered')
     .row()
+    .text('📅 По дате последней рассылки', 'massMailingByLastMailingInterval')
+    .row()
     .text('Вернуться ↩️', 'adminKeyboard')
     .row();
-// .text('📅 По дате последней рассылки', 'massMailingByLastMailingInterval')
-// .row()
 
 const entervalLastMailingKeyboard = new InlineKeyboard()
-    .text('10', '10_lastMailing')
-    .text('15', '15_lastMailing')
-    .text('30', '30_lastMailing')
+    .text('10 дн.', '10_lastMailing')
+    .text('15 дн.', '15_lastMailing')
+    .text('30 дн', '30_lastMailing')
     .row()
     .text('Вернуться ↩️', 'adminKeyboard')
     .row();
@@ -55,6 +55,22 @@ const confirmMassMailingJustRegisteredClientsKeyboard = new InlineKeyboard()
     .text('Вернуться ↩️', 'adminKeyboard')
     .row();
 
+const confirmMassMailingLastIntervalClientsKeyboard_10 = new InlineKeyboard()
+    .text('✅ Подтвердить', 'confirmMassMailingLastInterval_10')
+    .row()
+    .text('Вернуться ↩️', 'adminKeyboard')
+    .row();
+const confirmMassMailingLastIntervalClientsKeyboard_15 = new InlineKeyboard()
+    .text('✅ Подтвердить', 'confirmMassMailingLastInterval_15')
+    .row()
+    .text('Вернуться ↩️', 'adminKeyboard')
+    .row();
+const confirmMassMailingLastIntervalClientsKeyboard_30 = new InlineKeyboard()
+    .text('✅ Подтвердить', 'confirmMassMailingLastInterval_30')
+    .row()
+    .text('Вернуться ↩️', 'adminKeyboard')
+    .row();
+
 const stopMassMailingKeyboard = new InlineKeyboard().text('Остановить рассылку', 'stopMassMailing');
 
 module.exports = {
@@ -69,4 +85,7 @@ module.exports = {
     massMailingKeyboard,
     confirmMassMailingJustRegisteredClientsKeyboard,
     entervalLastMailingKeyboard,
+    confirmMassMailingLastIntervalClientsKeyboard_10,
+    confirmMassMailingLastIntervalClientsKeyboard_15,
+    confirmMassMailingLastIntervalClientsKeyboard_30,
 };

@@ -15,12 +15,16 @@ const { banWordsArr } = require('../controllers/banWords');
 const {
     confirmMassMailingKeyboard,
     confirmMassMailingJustRegisteredClientsKeyboard,
+    confirmMassMailingLastIntervalClientsKeyboard_10,
+    confirmMassMailingLastIntervalClientsKeyboard_15,
+    confirmMassMailingLastIntervalClientsKeyboard_30,
 } = require('../config/keyboards');
 
 // импортируем необходимые функции из модуля функций
 const {
     getAllAgreeClientsFromDB,
     getJustRegisteredClientsFromDB,
+    getAllClientsByLastMailingDateFromDB,
 } = require('../controllers/operationsWithDB');
 
 // импортируем необходимые функции из модуля функций
@@ -123,6 +127,51 @@ async function handleIncomingMessage(ctx) {
                 } клиентов.\n\n Подтверждаете рассылку?`,
                 {
                     reply_markup: confirmMassMailingJustRegisteredClientsKeyboard,
+                    parse_mode: 'HTML',
+                }
+            );
+        } else if (ctx.session.mailingVariant == 'lastMailingIntervalClients_10') {
+            const statObj = await getAllClientsByLastMailingDateFromDB(10);
+            await ctx.reply(
+                `ПОДТВЕРЖДЕНИЕ РАССЫЛКИ\nБудет отправлено следующее сообщение:\n--------------\n<b>${
+                    ctx.session.draftMessage
+                        ? ctx.session.draftMessage
+                        : '(Отправка вложения без текста)'
+                }</b>\n--------------\nСообщение получат: ${
+                    statObj.length
+                } клиентов.\n\n Подтверждаете рассылку?`,
+                {
+                    reply_markup: confirmMassMailingLastIntervalClientsKeyboard_10,
+                    parse_mode: 'HTML',
+                }
+            );
+        } else if (ctx.session.mailingVariant == 'lastMailingIntervalClients_15') {
+            const statObj = await getAllClientsByLastMailingDateFromDB(15);
+            await ctx.reply(
+                `ПОДТВЕРЖДЕНИЕ РАССЫЛКИ\nБудет отправлено следующее сообщение:\n--------------\n<b>${
+                    ctx.session.draftMessage
+                        ? ctx.session.draftMessage
+                        : '(Отправка вложения без текста)'
+                }</b>\n--------------\nСообщение получат: ${
+                    statObj.length
+                } клиентов.\n\n Подтверждаете рассылку?`,
+                {
+                    reply_markup: confirmMassMailingLastIntervalClientsKeyboard_15,
+                    parse_mode: 'HTML',
+                }
+            );
+        } else if (ctx.session.mailingVariant == 'lastMailingIntervalClients_30') {
+            const statObj = await getAllClientsByLastMailingDateFromDB(30);
+            await ctx.reply(
+                `ПОДТВЕРЖДЕНИЕ РАССЫЛКИ\nБудет отправлено следующее сообщение:\n--------------\n<b>${
+                    ctx.session.draftMessage
+                        ? ctx.session.draftMessage
+                        : '(Отправка вложения без текста)'
+                }</b>\n--------------\nСообщение получат: ${
+                    statObj.length
+                } клиентов.\n\n Подтверждаете рассылку?`,
+                {
+                    reply_markup: confirmMassMailingLastIntervalClientsKeyboard_30,
                     parse_mode: 'HTML',
                 }
             );

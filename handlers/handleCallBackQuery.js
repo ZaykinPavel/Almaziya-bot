@@ -5,6 +5,7 @@ const {
     adminKeyboard,
     returnKeyboard,
     massMailingKeyboard,
+    entervalLastMailingKeyboard,
 } = require('../config/keyboards');
 
 const { massMailingMessages, unitMessages, commonMessages } = require('../controllers/messages');
@@ -14,6 +15,7 @@ const {
     getJustRegisteredClientsFromDB,
     clientVerification,
     checkAbortAggreToGetMessages,
+    getAllClientsByLastMailingDateFromDB,
 } = require('../controllers/operationsWithDB');
 
 const { startMassmailing } = require('./massMailing');
@@ -77,6 +79,19 @@ async function handleCallbackQuery(ctx, bot) {
                 ctx.session.isMassMailing = true; // Устанавливаем флаг для отслеживания массовой рассылки
                 ctx.session.mailingVariant = 'allClients';
                 break;
+            case 'massMailingByLastMailingInterval':
+                // Удаляем предыдущее сообщение, если оно существует
+                if (ctx.session.massMailingMessageId) {
+                    await ctx.api.deleteMessage(ctx.chat.id, ctx.session.massMailingMessageId);
+                }
+                const massMailingLastIntervalMessage = await ctx.reply(
+                    massMailingMessages.setIntervalForMassMailingText,
+                    {
+                        reply_markup: entervalLastMailingKeyboard,
+                    }
+                );
+                ctx.session.massMailingMessageId = massMailingLastIntervalMessage.message_id; // Сохраняем ID сообщения
+                break;
             case 'massMailingJustRegistered':
                 // Удаляем предыдущее сообщение, если оно существует
                 if (ctx.session.massMailingMessageId) {
@@ -118,9 +133,100 @@ async function handleCallbackQuery(ctx, bot) {
                 startMassmailing(bot, ctx, clientsForMailing);
                 ctx.session.attachment = null;
                 break;
+            case '10_lastMailing':
+                const clientsLast_10_DaysForMailing = await getAllClientsByLastMailingDateFromDB(
+                    10
+                );
+                console.log(clientsLast_10_DaysForMailing);
+                if (clientsLast_10_DaysForMailing.length !== 0) {
+                    const massMailingMessageForLastInterval = await ctx.reply(
+                        massMailingMessages.getTextForMailing,
+                        {
+                            reply_markup: returnKeyboard,
+                        }
+                    );
+                    ctx.session.massMailingMessageId = massMailingMessageForLastInterval.message_id; // Сохраняем ID сообщения
+                    ctx.session.isMassMailing = true; // Устанавливаем флаг для отслеживания массовой рассылки
+                    ctx.session.mailingVariant = 'lastMailingIntervalClients_10';
+                } else {
+                    await safelyEditMessageReplyMarkup(ctx, { inline_keyboard: [] });
+                    await ctx.reply(massMailingMessages.clientsNotFoundText, {
+                        reply_markup: massMailingKeyboard,
+                        parse_mode: 'HTML',
+                    });
+                }
+                break;
+            case '15_lastMailing':
+                const clientsLast_15_DaysForMailing = await getAllClientsByLastMailingDateFromDB(
+                    15
+                );
+                console.log(clientsLast_15_DaysForMailing);
+                if (clientsLast_15_DaysForMailing.length !== 0) {
+                    const massMailingMessageForLastInterval = await ctx.reply(
+                        massMailingMessages.getTextForMailing,
+                        {
+                            reply_markup: returnKeyboard,
+                        }
+                    );
+                    ctx.session.massMailingMessageId = massMailingMessageForLastInterval.message_id; // Сохраняем ID сообщения
+                    ctx.session.isMassMailing = true; // Устанавливаем флаг для отслеживания массовой рассылки
+                    ctx.session.mailingVariant = 'lastMailingIntervalClients_15';
+                } else {
+                    await safelyEditMessageReplyMarkup(ctx, { inline_keyboard: [] });
+                    await ctx.reply(massMailingMessages.clientsNotFoundText, {
+                        reply_markup: massMailingKeyboard,
+                        parse_mode: 'HTML',
+                    });
+                }
+                break;
+            case '30_lastMailing':
+                const clientsLast_30_DaysForMailing = await getAllClientsByLastMailingDateFromDB(
+                    30
+                );
+                console.log(clientsLast_30_DaysForMailing);
+                if (clientsLast_30_DaysForMailing.length !== 0) {
+                    const massMailingMessageForLastInterval = await ctx.reply(
+                        massMailingMessages.getTextForMailing,
+                        {
+                            reply_markup: returnKeyboard,
+                        }
+                    );
+                    ctx.session.massMailingMessageId = massMailingMessageForLastInterval.message_id; // Сохраняем ID сообщения
+                    ctx.session.isMassMailing = true; // Устанавливаем флаг для отслеживания массовой рассылки
+                    ctx.session.mailingVariant = 'lastMailingIntervalClients_30';
+                } else {
+                    await safelyEditMessageReplyMarkup(ctx, { inline_keyboard: [] });
+                    await ctx.reply(massMailingMessages.clientsNotFoundText, {
+                        reply_markup: massMailingKeyboard,
+                        parse_mode: 'HTML',
+                    });
+                }
+                break;
+
             case 'confirmMassMailingJustRegistered':
                 const justRegisteredClientsForMailing = await getJustRegisteredClientsFromDB();
                 startMassmailing(bot, ctx, justRegisteredClientsForMailing);
+                ctx.session.attachment = null;
+                break;
+            case 'confirmMassMailingLastInterval_10':
+                const lastIntervalClientsForMailing_10 = await getAllClientsByLastMailingDateFromDB(
+                    10
+                );
+                startMassmailing(bot, ctx, lastIntervalClientsForMailing_10);
+                ctx.session.attachment = null;
+                break;
+            case 'confirmMassMailingLastInterval_15':
+                const lastIntervalClientsForMailing_15 = await getAllClientsByLastMailingDateFromDB(
+                    15
+                );
+                startMassmailing(bot, ctx, lastIntervalClientsForMailing_15);
+                ctx.session.attachment = null;
+                break;
+            case 'confirmMassMailingLastInterval_30':
+                const lastIntervalClientsForMailing_30 = await getAllClientsByLastMailingDateFromDB(
+                    30
+                );
+                startMassmailing(bot, ctx, lastIntervalClientsForMailing_30);
                 ctx.session.attachment = null;
                 break;
             case 'stopMassMailing':
