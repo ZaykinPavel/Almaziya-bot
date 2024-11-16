@@ -67,7 +67,15 @@ async function handleCallbackQuery(ctx, bot) {
             case 'massMailingAll':
                 // Удаляем предыдущее сообщение, если оно существует
                 if (ctx.session.massMailingMessageId) {
-                    await ctx.api.deleteMessage(ctx.chat.id, ctx.session.massMailingMessageId);
+                    try {
+                        await ctx.api.deleteMessage(ctx.chat.id, ctx.session.massMailingMessageId);
+                    } catch (error) {
+                        console.error(
+                            'Ошибка при удалении сообщения в блоке massMailingAll:',
+                            error.message
+                        );
+                    }
+                    ctx.session.massMailingMessageId = null; // Сбрасываем ID после удаления
                 }
                 const massMailingMessageAll = await ctx.reply(
                     massMailingMessages.getTextForMailing,
@@ -82,7 +90,15 @@ async function handleCallbackQuery(ctx, bot) {
             case 'massMailingByLastMailingInterval':
                 // Удаляем предыдущее сообщение, если оно существует
                 if (ctx.session.massMailingMessageId) {
-                    await ctx.api.deleteMessage(ctx.chat.id, ctx.session.massMailingMessageId);
+                    try {
+                        await ctx.api.deleteMessage(ctx.chat.id, ctx.session.massMailingMessageId);
+                    } catch (error) {
+                        console.error(
+                            'Ошибка при удалении сообщения в блоке massMailingByLastMailingInterval:',
+                            error.message
+                        );
+                    }
+                    ctx.session.massMailingMessageId = null; // Сбрасываем ID после удаления
                 }
                 const massMailingLastIntervalMessage = await ctx.reply(
                     massMailingMessages.setIntervalForMassMailingText,
@@ -95,7 +111,15 @@ async function handleCallbackQuery(ctx, bot) {
             case 'massMailingJustRegistered':
                 // Удаляем предыдущее сообщение, если оно существует
                 if (ctx.session.massMailingMessageId) {
-                    await ctx.api.deleteMessage(ctx.chat.id, ctx.session.massMailingMessageId);
+                    try {
+                        await ctx.api.deleteMessage(ctx.chat.id, ctx.session.massMailingMessageId);
+                    } catch (error) {
+                        console.error(
+                            'Ошибка при удалении сообщения в блоке massMailingJustRegistered:',
+                            error.message
+                        );
+                    }
+                    ctx.session.massMailingMessageId = null; // Сбрасываем ID после удаления
                 }
                 const statObj = await getJustRegisteredClientsFromDB();
                 if (statObj.length !== 0) {
@@ -120,7 +144,14 @@ async function handleCallbackQuery(ctx, bot) {
                 await safelyEditMessageReplyMarkup(ctx, { inline_keyboard: [] });
                 // Удаляем сообщение массовой рассылки, если оно существует
                 if (ctx.session.massMailingMessageId) {
-                    await ctx.api.deleteMessage(ctx.chat.id, ctx.session.massMailingMessageId);
+                    try {
+                        await ctx.api.deleteMessage(ctx.chat.id, ctx.session.massMailingMessageId);
+                    } catch (error) {
+                        console.error(
+                            'Ошибка при удалении сообщения в блоке adminKeyboard:',
+                            error.message
+                        );
+                    }
                     ctx.session.massMailingMessageId = null; // Сбрасываем ID после удаления
                 }
                 await ctx.reply(commonMessages.abortToMainMenuText, {
@@ -131,7 +162,6 @@ async function handleCallbackQuery(ctx, bot) {
             case 'confirmMassMailing':
                 const clientsForMailing = await getAllAgreeClientsFromDB();
                 startMassmailing(bot, ctx, clientsForMailing);
-                ctx.session.attachment = null;
                 break;
             case '10_lastMailing':
                 const clientsLast_10_DaysForMailing = await getAllClientsByLastMailingDateFromDB(
@@ -206,32 +236,29 @@ async function handleCallbackQuery(ctx, bot) {
             case 'confirmMassMailingJustRegistered':
                 const justRegisteredClientsForMailing = await getJustRegisteredClientsFromDB();
                 startMassmailing(bot, ctx, justRegisteredClientsForMailing);
-                ctx.session.attachment = null;
                 break;
             case 'confirmMassMailingLastInterval_10':
                 const lastIntervalClientsForMailing_10 = await getAllClientsByLastMailingDateFromDB(
                     10
                 );
                 startMassmailing(bot, ctx, lastIntervalClientsForMailing_10);
-                ctx.session.attachment = null;
                 break;
             case 'confirmMassMailingLastInterval_15':
                 const lastIntervalClientsForMailing_15 = await getAllClientsByLastMailingDateFromDB(
                     15
                 );
                 startMassmailing(bot, ctx, lastIntervalClientsForMailing_15);
-                ctx.session.attachment = null;
                 break;
             case 'confirmMassMailingLastInterval_30':
                 const lastIntervalClientsForMailing_30 = await getAllClientsByLastMailingDateFromDB(
                     30
                 );
                 startMassmailing(bot, ctx, lastIntervalClientsForMailing_30);
-                ctx.session.attachment = null;
                 break;
             case 'stopMassMailing':
                 ctx.session.isMassMailing = false; // Устанавливаем флаг остановки
                 ctx.session.mailingVariant = null;
+                ctx.session.attachment = null;
                 console.log(
                     'Массовая рассылка принудительно остановлена. Флаг: ',
                     ctx.session.isMassMailing

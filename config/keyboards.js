@@ -55,21 +55,13 @@ const confirmMassMailingJustRegisteredClientsKeyboard = new InlineKeyboard()
     .text('Вернуться ↩️', 'adminKeyboard')
     .row();
 
-const confirmMassMailingLastIntervalClientsKeyboard_10 = new InlineKeyboard()
-    .text('✅ Подтвердить', 'confirmMassMailingLastInterval_10')
-    .row()
-    .text('Вернуться ↩️', 'adminKeyboard')
-    .row();
-const confirmMassMailingLastIntervalClientsKeyboard_15 = new InlineKeyboard()
-    .text('✅ Подтвердить', 'confirmMassMailingLastInterval_15')
-    .row()
-    .text('Вернуться ↩️', 'adminKeyboard')
-    .row();
-const confirmMassMailingLastIntervalClientsKeyboard_30 = new InlineKeyboard()
-    .text('✅ Подтвердить', 'confirmMassMailingLastInterval_30')
-    .row()
-    .text('Вернуться ↩️', 'adminKeyboard')
-    .row();
+function createConfirmKeyboard(interval) {
+    return new InlineKeyboard()
+        .text('✅ Подтвердить', `confirmMassMailingLastInterval_${interval}`)
+        .row()
+        .text('Вернуться ↩️', 'adminKeyboard')
+        .row();
+}
 
 const stopMassMailingKeyboard = new InlineKeyboard().text('Остановить рассылку', 'stopMassMailing');
 
@@ -85,7 +77,5 @@ module.exports = {
     massMailingKeyboard,
     confirmMassMailingJustRegisteredClientsKeyboard,
     entervalLastMailingKeyboard,
-    confirmMassMailingLastIntervalClientsKeyboard_10,
-    confirmMassMailingLastIntervalClientsKeyboard_15,
-    confirmMassMailingLastIntervalClientsKeyboard_30,
+    createConfirmKeyboard,
 };

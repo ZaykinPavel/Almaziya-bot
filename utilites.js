@@ -283,6 +283,32 @@ async function safelyEditMessageReplyMarkup(ctx, newMarkup) {
     }
 }
 
+// Функция для отправки вложений
+async function sendAttachment(bot, chatId, attachment, options) {
+    switch (attachment.type) {
+        case 'photo':
+            await bot.api.sendPhoto(chatId, attachment.file_id, options);
+            break;
+        case 'video':
+            await bot.api.sendVideo(chatId, attachment.file_id, options);
+            break;
+        case 'document':
+            await bot.api.sendDocument(chatId, attachment.file_id, options);
+            break;
+        case 'audio':
+            await bot.api.sendAudio(chatId, attachment.file_id, options);
+            break;
+        case 'voice':
+            await bot.api.sendVoice(chatId, attachment.file_id, options);
+            break;
+        case 'sticker':
+            await bot.api.sendSticker(chatId, attachment.file_id);
+            break;
+        default:
+            console.error(`Неизвестный тип вложения: ${attachment.type}`);
+    }
+}
+
 // Экспортируем функцию
 module.exports = {
     makeInlineKeyboardFromArr,
@@ -299,4 +325,5 @@ module.exports = {
     askForName,
     askForCity,
     safelyEditMessageReplyMarkup,
+    sendAttachment,
 };

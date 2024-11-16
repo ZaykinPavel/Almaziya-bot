@@ -15,9 +15,7 @@ const { banWordsArr } = require('../controllers/banWords');
 const {
     confirmMassMailingKeyboard,
     confirmMassMailingJustRegisteredClientsKeyboard,
-    confirmMassMailingLastIntervalClientsKeyboard_10,
-    confirmMassMailingLastIntervalClientsKeyboard_15,
-    confirmMassMailingLastIntervalClientsKeyboard_30,
+    createConfirmKeyboard,
 } = require('../config/keyboards');
 
 // импортируем необходимые функции из модуля функций
@@ -85,93 +83,56 @@ async function handleIncomingMessage(ctx) {
             await ctx.reply(massMailingMessages.singleAttachmentOnly);
             return; // Прекращаем выполнение функции, если вложение уже есть
         }
-        // Проверяем наличие вложений
-        if (ctx.message.photo) {
-            ctx.session.attachment = { type: 'photo', file_id: ctx.message.photo[0].file_id };
-        } else if (ctx.message.document) {
-            ctx.session.attachment = { type: 'document', file_id: ctx.message.document.file_id };
-        } else if (ctx.message.video) {
-            ctx.session.attachment = { type: 'video', file_id: ctx.message.video.file_id };
-        } else if (ctx.message.audio) {
-            ctx.session.attachment = { type: 'audio', file_id: ctx.message.audio.file_id };
-        } else if (ctx.message.voice) {
-            ctx.session.attachment = { type: 'voice', file_id: ctx.message.voice.file_id };
-        } else if (ctx.message.sticker) {
-            ctx.session.attachment = { type: 'sticker', file_id: ctx.message.sticker.file_id };
+
+        // Сохранение вложений
+        const attachmentTypes = ['photo', 'document', 'video', 'audio', 'voice', 'sticker'];
+        for (let type of attachmentTypes) {
+            if (ctx.message[type] && !ctx.session.attachment) {
+                ctx.session.attachment = {
+                    type,
+                    file_id: ctx.message[type][0]?.file_id || ctx.message[type].file_id,
+                };
+                break;
+            }
         }
 
-        if (ctx.session.mailingVariant == 'allClients') {
-            const statObj = await getAllAgreeClientsFromDB();
-            await ctx.reply(
-                `ПОДТВЕРЖДЕНИЕ РАССЫЛКИ\nБудет отправлено следующее сообщение:\n--------------\n<b>${
-                    ctx.session.draftMessage
-                        ? ctx.session.draftMessage
-                        : '(Отправка вложения без текста)'
-                }</b>\n--------------\nСообщение получат: ${
-                    statObj.length
-                } клиентов.\n\n Подтверждаете рассылку?`,
-                {
-                    reply_markup: confirmMassMailingKeyboard,
-                    parse_mode: 'HTML',
+        // Выбираем соответствующую рассылку и получаем статистику
+        const mailingVariants = {
+            allClients: getAllAgreeClientsFromDB,
+            justRegisteredClients: getJustRegisteredClientsFromDB,
+            lastMailingIntervalClients_10: () => getAllClientsByLastMailingDateFromDB(10),
+            lastMailingIntervalClients_15: () => getAllClientsByLastMailingDateFromDB(15),
+            lastMailingIntervalClients_30: () => getAllClientsByLastMailingDateFromDB(30),
+        };
+
+        const statObj = await mailingVariants[ctx.session.mailingVariant]?.();
+        if (statObj) {
+            const keyboardMap = {
+                allClients: confirmMassMailingKeyboard,
+                justRegisteredClients: confirmMassMailingJustRegisteredClientsKeyboard,
+                lastMailingIntervalClients_10: createConfirmKeyboard(10),
+                lastMailingIntervalClients_15: createConfirmKeyboard(15),
+                lastMailingIntervalClients_30: createConfirmKeyboard(30),
+            };
+            console.log(ctx.session.massMailingMessageId);
+            // Удаление старого сообщения с клавиатурой, если оно есть
+            if (ctx.session.massMailingMessageId) {
+                try {
+                    await ctx.api.deleteMessage(ctx.chat.id, ctx.session.massMailingMessageId);
+                } catch (error) {
+                    console.log('Ошибка при удалении старого сообщения:', error);
                 }
-            );
-        } else if (ctx.session.mailingVariant == 'justRegisteredClients') {
-            const statObj = await getJustRegisteredClientsFromDB();
+            }
+            // Получаем соответствующую клавиатуру
+            const keyboard = keyboardMap[ctx.session.mailingVariant];
             await ctx.reply(
                 `ПОДТВЕРЖДЕНИЕ РАССЫЛКИ\nБудет отправлено следующее сообщение:\n--------------\n<b>${
-                    ctx.session.draftMessage
-                        ? ctx.session.draftMessage
-                        : '(Отправка вложения без текста)'
+                    ctx.session.draftMessage || '(Отправка вложения без текста)'
                 }</b>\n--------------\nСообщение получат: ${
                     statObj.length
                 } клиентов.\n\n Подтверждаете рассылку?`,
                 {
-                    reply_markup: confirmMassMailingJustRegisteredClientsKeyboard,
-                    parse_mode: 'HTML',
-                }
-            );
-        } else if (ctx.session.mailingVariant == 'lastMailingIntervalClients_10') {
-            const statObj = await getAllClientsByLastMailingDateFromDB(10);
-            await ctx.reply(
-                `ПОДТВЕРЖДЕНИЕ РАССЫЛКИ\nБудет отправлено следующее сообщение:\n--------------\n<b>${
-                    ctx.session.draftMessage
-                        ? ctx.session.draftMessage
-                        : '(Отправка вложения без текста)'
-                }</b>\n--------------\nСообщение получат: ${
-                    statObj.length
-                } клиентов.\n\n Подтверждаете рассылку?`,
-                {
-                    reply_markup: confirmMassMailingLastIntervalClientsKeyboard_10,
-                    parse_mode: 'HTML',
-                }
-            );
-        } else if (ctx.session.mailingVariant == 'lastMailingIntervalClients_15') {
-            const statObj = await getAllClientsByLastMailingDateFromDB(15);
-            await ctx.reply(
-                `ПОДТВЕРЖДЕНИЕ РАССЫЛКИ\nБудет отправлено следующее сообщение:\n--------------\n<b>${
-                    ctx.session.draftMessage
-                        ? ctx.session.draftMessage
-                        : '(Отправка вложения без текста)'
-                }</b>\n--------------\nСообщение получат: ${
-                    statObj.length
-                } клиентов.\n\n Подтверждаете рассылку?`,
-                {
-                    reply_markup: confirmMassMailingLastIntervalClientsKeyboard_15,
-                    parse_mode: 'HTML',
-                }
-            );
-        } else if (ctx.session.mailingVariant == 'lastMailingIntervalClients_30') {
-            const statObj = await getAllClientsByLastMailingDateFromDB(30);
-            await ctx.reply(
-                `ПОДТВЕРЖДЕНИЕ РАССЫЛКИ\nБудет отправлено следующее сообщение:\n--------------\n<b>${
-                    ctx.session.draftMessage
-                        ? ctx.session.draftMessage
-                        : '(Отправка вложения без текста)'
-                }</b>\n--------------\nСообщение получат: ${
-                    statObj.length
-                } клиентов.\n\n Подтверждаете рассылку?`,
-                {
-                    reply_markup: confirmMassMailingLastIntervalClientsKeyboard_30,
+                    reply_markup: keyboard,
                     parse_mode: 'HTML',
                 }
             );
